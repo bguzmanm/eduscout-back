@@ -66,7 +66,7 @@ export async function seedDatabase(db: DrizzleConnection) {
             slug: 'santo-tomas',
             baseUrl:
               'https://www.ipsantotomas.cl/trabaja-con-nosotros/academicos/',
-            scraperType: 'wordpress',
+            scraperType: 'santo_tomas',
           },
           {
             name: 'IP Chile',

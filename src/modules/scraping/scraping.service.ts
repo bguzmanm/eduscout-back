@@ -9,6 +9,7 @@ import { UcAdapter } from './adapters/uc.adapter';
 import { TrabajandoClAdapter } from './adapters/trabajando-cl.adapter';
 import { UaiAdapter } from './adapters/uai.adapter';
 import { LaborumAdapter } from './adapters/laborum.adapter';
+import { SantoTomasAdapter } from './adapters/santo-tomas.adapter';
 import { sources } from '../../db/schema';
 import { eq } from 'drizzle-orm';
 
@@ -38,6 +39,8 @@ export class ScrapingService {
         return new UchileAdapter();
       case 'wordpress':
         return new UcAdapter();
+      case 'santo_tomas':
+        return new SantoTomasAdapter();
       case 'trabajando_cl':
         return new TrabajandoClAdapter(slug, name);
       case 'html':
