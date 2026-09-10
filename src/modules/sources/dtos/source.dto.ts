@@ -44,6 +44,16 @@ export class CreateSourceDto {
   scraperType: string;
 
   @ApiProperty({
+    example: 'universidad_publica',
+    description: 'Categoría de la institución',
+    required: false,
+  })
+  @IsString()
+  @IsOptional()
+  @MaxLength(100)
+  category?: string;
+
+  @ApiProperty({
     example: true,
     description: 'Si la fuente está activa para scraping',
     required: false,
@@ -83,6 +93,12 @@ export class SourceResponseDto {
     description: 'Tipo de scraper a utilizar',
   })
   scraperType: string;
+
+  @ApiProperty({
+    example: 'universidad_publica',
+    description: 'Categoría de la institución',
+  })
+  category: string;
 
   @ApiProperty({
     example: true,

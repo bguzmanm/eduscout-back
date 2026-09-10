@@ -16,6 +16,7 @@ export const sources = pgTable('sources', {
   slug: varchar('slug', { length: 100 }).notNull().unique(),
   baseUrl: text('base_url').notNull(),
   scraperType: varchar('scraper_type', { length: 50 }).notNull(),
+  category: varchar('category', { length: 100 }).notNull().default(''),
   isActive: boolean('is_active').default(true).notNull(),
   lastScraped: timestamp('last_scraped'),
   createdAt: timestamp('created_at').defaultNow().notNull(),

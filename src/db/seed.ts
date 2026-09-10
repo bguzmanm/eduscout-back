@@ -28,12 +28,14 @@ export async function seedDatabase(db: DrizzleConnection) {
             slug: 'uc',
             baseUrl: 'https://cargosacademicos.uc.cl',
             scraperType: 'wordpress',
+            category: 'universidad_privada',
           },
           {
             name: 'Universidad de Chile',
             slug: 'uchile',
             baseUrl: 'https://concurso-academico.uchile.cl',
             scraperType: 'uchile_api',
+            category: 'universidad_publica',
           },
           {
             name: 'Universidad Adolfo Ibañez',
@@ -41,6 +43,7 @@ export async function seedDatabase(db: DrizzleConnection) {
             baseUrl:
               'https://www.uai.cl/ingenieria-y-ciencias/academicos/concursos-academicos',
             scraperType: 'html',
+            category: 'universidad_privada',
           },
           {
             name: 'Universidad Nacional Andrés Bello',
@@ -48,18 +51,21 @@ export async function seedDatabase(db: DrizzleConnection) {
             baseUrl:
               'https://unab.trabajando.cl/empleo-categoria/1245-cargos-academicos',
             scraperType: 'trabajando_cl',
+            category: 'universidad_privada',
           },
           {
             name: 'Inacap',
             slug: 'inacap',
             baseUrl: 'https://inacap.trabajando.cl',
             scraperType: 'trabajando_cl',
+            category: 'centro_formacion_tecnica',
           },
           {
             name: 'Duoc UC',
             slug: 'duoc',
             baseUrl: 'https://duoc.trabajando.cl',
             scraperType: 'trabajando_cl',
+            category: 'instituto_profesional',
           },
           {
             name: 'IP Santo Tomás',
@@ -67,6 +73,7 @@ export async function seedDatabase(db: DrizzleConnection) {
             baseUrl:
               'https://www.ipsantotomas.cl/trabaja-con-nosotros/academicos/',
             scraperType: 'santo_tomas',
+            category: 'instituto_profesional',
           },
           {
             name: 'IP Chile',
@@ -74,6 +81,7 @@ export async function seedDatabase(db: DrizzleConnection) {
             baseUrl:
               'https://www.laborum.cl/perfiles/empresa_instituto-profesional-de-chile_12054583.html',
             scraperType: 'laborum',
+            category: 'instituto_profesional',
           },
         ])
         .returning();
