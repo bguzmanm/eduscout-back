@@ -1,0 +1,137 @@
+import { Injectable, Logger } from '@nestjs/common';
+import { Inject } from '@nestjs/common';
+import { DRIZZLE_PROVIDER, type DrizzleConnection } from '../database/database.module';
+import { SourcesService } from '../sources/services/sources.service';
+import { JobsRepository } from '../jobs/repositories/jobs.repository';
+import type { ScraperAdapter, RawJob } from './adapters/base.interface';
+import { UchileAdapter } from './adapters/uchile.adapter';
+import { UcAdapter } from './adapters/uc.adapter';
+import { TrabajandoClAdapter } from './adapters/trabajando-cl.adapter';
+import { UaiAdapter } from './adapters/uai.adapter';
+import { LaborumAdapter } from './adapters/laborum.adapter';
+import { sources } from '../../db/schema';
+import { eq } from 'drizzle-orm';
+
+export interface ScrapingResult {
+  totalScraped: number;
+  perSource: Record<string, { count: number; errors: string[] }>;
+}
+
+@Injectable()
+export class ScrapingService {
+  private readonly logger = new Logger('ScrapingService');
+
+  constructor(
+    private readonly sourcesService: SourcesService,
+    private readonly jobsRepository: JobsRepository,
+    @Inject(DRIZZLE_PROVIDER)
+    private readonly db: DrizzleConnection,
+  ) {}
+
+  private getAdapter(
+    scraperType: string,
+    slug: string,
+    name: string,
+  ): ScraperAdapter | null {
+    switch (scraperType) {
+      case 'uchile_api':
+        return new UchileAdapter();
+      case 'wordpress':
+        return new UcAdapter();
+      case 'trabajando_cl':
+        return new TrabajandoClAdapter(slug, name);
+      case 'html':
+        return new UaiAdapter();
+      case 'laborum':
+        return new LaborumAdapter();
+      default:
+        this.logger.warn(`Tipo de scraper desconocido: ${scraperType}`);
+        return null;
+    }
+  }
+
+  async runScraping(sourceSlug?: string): Promise<ScrapingResult> {
+    this.logger.log(
+      `Iniciando scraping${sourceSlug ? ` para ${sourceSlug}` : ' (todas las fuentes)'}`,
+    );
+
+    const activeSources = sourceSlug
+      ? [await this.sourcesService.findBySlug(sourceSlug)]
+      : await this.sourcesService.findActiveSources();
+
+    const result: ScrapingResult = {
+      totalScraped: 0,
+      perSource: {},
+    };
+
+    for (const source of activeSources) {
+      const sourceResult = { count: 0, errors: [] as string[] };
+      result.perSource[source.slug] = sourceResult;
+
+      const adapter = this.getAdapter(
+        source.scraperType,
+        source.slug,
+        source.name,
+      );
+      if (!adapter) {
+        sourceResult.errors.push(
+          `Tipo de scraper no soportado: ${source.scraperType}`,
+        );
+        continue;
+      }
+
+      try {
+        this.logger.log(`Scraping ${source.name}...`);
+        const rawJobs = await adapter.fetchListings();
+
+        for (const rawJob of rawJobs) {
+          try {
+            await this.jobsRepository.upsert(source.id, rawJob.externalId, {
+              title: rawJob.title,
+              company: rawJob.company,
+              department: rawJob.department,
+              location: rawJob.location,
+              region: rawJob.region,
+              jobType: rawJob.jobType,
+              description: rawJob.description,
+              requirements: rawJob.requirements,
+              salaryRange: rawJob.salaryRange,
+              publishedAt: rawJob.publishedAt,
+              deadline: rawJob.deadline,
+              applyUrl: rawJob.applyUrl,
+              isActive: true,
+            });
+            sourceResult.count++;
+          } catch (error) {
+            sourceResult.errors.push(
+              `Error al guardar oferta ${rawJob.externalId}: ${(error as Error).message}`,
+            );
+          }
+        }
+
+        await this.db
+          .update(sources)
+          .set({ lastScraped: new Date() })
+          .where(eq(sources.id, source.id));
+
+        this.logger.log(
+          `${source.name}: ${sourceResult.count} ofertas procesadas`,
+        );
+      } catch (error) {
+        sourceResult.errors.push(
+          `Error general en scraping: ${(error as Error).message}`,
+        );
+        this.logger.error(
+          `Error en ${source.name}: ${(error as Error).message}`,
+        );
+      }
+
+      result.totalScraped += sourceResult.count;
+    }
+
+    this.logger.log(
+      `Scraping completado: ${result.totalScraped} ofertas totales`,
+    );
+    return result;
+  }
+}

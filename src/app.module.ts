@@ -1,0 +1,26 @@
+import { Module } from '@nestjs/common';
+import { ConfigModule } from '@nestjs/config';
+import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
+import { APP_GUARD } from '@nestjs/core';
+import { DatabaseModule } from './modules/database/database.module';
+import { SourcesModule } from './modules/sources/sources.module';
+import { JobsModule } from './modules/jobs/jobs.module';
+import { ScrapingModule } from './modules/scraping/scraping.module';
+
+@Module({
+  imports: [
+    ConfigModule.forRoot({ isGlobal: true }),
+    ThrottlerModule.forRoot([{ ttl: 60000, limit: 100 }]),
+    DatabaseModule,
+    SourcesModule,
+    JobsModule,
+    ScrapingModule,
+  ],
+  providers: [
+    {
+      provide: APP_GUARD,
+      useClass: ThrottlerGuard,
+    },
+  ],
+})
+export class AppModule {}
