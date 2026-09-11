@@ -2,7 +2,7 @@ import { Inject, Injectable } from '@nestjs/common';
 import { DRIZZLE_PROVIDER } from '../../database/database.module';
 import { PostgresJsDatabase } from 'drizzle-orm/postgres-js';
 import * as schema from '../../../db/schema';
-import { and, eq, ilike, gte, count, isNotNull, SQL } from 'drizzle-orm';
+import { and, eq, ilike, gte, count, isNotNull, SQL, desc } from 'drizzle-orm';
 
 type JobWithSource = typeof schema.jobs.$inferSelect & {
   source: typeof schema.sources.$inferSelect | null;
@@ -36,7 +36,8 @@ export class JobsRepository {
       const items = await this.db.query.jobs.findMany({
         limit,
         offset,
-        orderBy: (j, { desc }) => [desc(j.publishedAt)],
+        where: eq(schema.jobs.isActive, true),
+        orderBy: (j, { desc }) => [desc(j.scrapedAt), desc(j.publishedAt)],
         with: { source: true },
       });
       const [{ count: total }] = await this.db
@@ -64,7 +65,7 @@ export class JobsRepository {
           eq(schema.jobs.sourceId, schema.sources.id),
         )
         .where(where)
-        .orderBy(schema.jobs.publishedAt)
+        .orderBy(desc(schema.jobs.scrapedAt), desc(schema.jobs.publishedAt))
         .limit(limit)
         .offset(offset),
       this.db
