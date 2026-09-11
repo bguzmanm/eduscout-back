@@ -12,6 +12,7 @@ import { TrabajandoClAdapter } from './adapters/trabajando-cl.adapter';
 import { UaiAdapter } from './adapters/uai.adapter';
 import { LaborumAdapter } from './adapters/laborum.adapter';
 import { SantoTomasAdapter } from './adapters/santo-tomas.adapter';
+import { UsmVraAdapter } from './adapters/usm-vra.adapter';
 import { sources } from '../../db/schema';
 import { eq } from 'drizzle-orm';
 
@@ -49,6 +50,8 @@ export class ScrapingService {
         return new UaiAdapter();
       case 'laborum':
         return new LaborumAdapter();
+      case 'usm_vra':
+        return new UsmVraAdapter();
       default:
         this.logger.warn(`Tipo de scraper desconocido: ${scraperType}`);
         return null;

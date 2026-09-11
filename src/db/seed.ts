@@ -18,7 +18,7 @@ export async function seedDatabase(db: DrizzleConnection) {
         RESTART IDENTITY
         CASCADE
       `);
-
+  
       console.log('📝 Creando fuentes...');
       await tx
         .insert(sources)
@@ -93,6 +93,7 @@ export async function seedDatabase(db: DrizzleConnection) {
               'https://www.laborum.cl/perfiles/empresa_instituto-profesional-de-chile_12054583.html',
             scraperType: 'laborum',
             category: 'instituto_profesional',
+            logoUrl: 'https://saba.cl/wp-content/uploads/2021/04/logos-ipchile-250x250.png'
           },
           {
             name: 'Universidad de Concepción',
@@ -103,9 +104,18 @@ export async function seedDatabase(db: DrizzleConnection) {
             logoUrl:
               'https://staticcdn.trabajando.cl/portal-comunidad/66f4222629ff84227c039d28/assets/logo.png',
           },
+          {
+            name: 'Universidad Técnica Federico Santa María',
+            slug: 'usm',
+            baseUrl: 'https://vra.usm.cl/ofertas-laborales/',
+            scraperType: 'usm_vra',
+            category: 'universidad_privada',
+            logoUrl:
+              'https://vra.usm.cl/wp-content/uploads/2022/07/cropped-cropped-favicon_usm-270x270-1-270x270.png',
+          },
         ])
         .returning();
-      console.log('✅ 9 fuentes creadas');
+      console.log('✅ 10 fuentes creadas');
     });
 
     console.log('✨ Seeding completado exitosamente');
