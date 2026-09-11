@@ -14,6 +14,7 @@ export interface JobsFilters {
   region?: string;
   jobType?: string;
   fromDate?: string;
+  category?: string;
 }
 
 @Injectable()
@@ -170,6 +171,10 @@ export class JobsRepository {
 
     if (filters.sourceSlug) {
       conditions.push(eq(schema.sources.slug, filters.sourceSlug));
+    }
+
+    if (filters.category) {
+      conditions.push(eq(schema.sources.category, filters.category));
     }
 
     if (filters.region) {

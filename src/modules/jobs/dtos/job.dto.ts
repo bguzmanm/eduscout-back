@@ -42,6 +42,14 @@ export class SearchJobsDto extends PaginationDto {
   @IsOptional()
   @IsDateString()
   fromDate?: string;
+
+  @ApiProperty({
+    required: false,
+    description: 'Filtro por tipo de institución (ej. universidad_publica)',
+  })
+  @IsOptional()
+  @IsString()
+  category?: string;
 }
 
 export class JobResponseDto {

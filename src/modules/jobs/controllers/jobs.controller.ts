@@ -37,6 +37,11 @@ export class JobsController {
     description: 'Filtro por tipo de jornada',
   })
   @ApiQuery({
+    name: 'category',
+    required: false,
+    description: 'Filtro por tipo de institución (ej. universidad_publica)',
+  })
+  @ApiQuery({
     name: 'fromDate',
     required: false,
     description: 'Publicadas desde esta fecha (ISO 8601)',

@@ -30,6 +30,7 @@ export class JobsService {
         region: query.region,
         jobType: query.jobType,
         fromDate: query.fromDate,
+        category: query.category,
       },
       page,
       limit,
