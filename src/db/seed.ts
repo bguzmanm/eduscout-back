@@ -113,9 +113,17 @@ export async function seedDatabase(db: DrizzleConnection) {
             logoUrl:
               'https://vra.usm.cl/wp-content/uploads/2022/07/cropped-cropped-favicon_usm-270x270-1-270x270.png',
           },
+          {
+            name: 'Universidad de Valparaíso',
+            slug: 'uv',
+            baseUrl: 'https://cyl.uv.cl/cargos',
+            scraperType: 'uv_cargos',
+            category: 'universidad_publica',
+            logoUrl: 'https://cyl.uv.cl/images/base/favicon.png',
+          },
         ])
         .returning();
-      console.log('✅ 10 fuentes creadas');
+      console.log('✅ 11 fuentes creadas');
     });
 
     console.log('✨ Seeding completado exitosamente');

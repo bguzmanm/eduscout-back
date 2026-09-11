@@ -13,6 +13,7 @@ import { UaiAdapter } from './adapters/uai.adapter';
 import { LaborumAdapter } from './adapters/laborum.adapter';
 import { SantoTomasAdapter } from './adapters/santo-tomas.adapter';
 import { UsmVraAdapter } from './adapters/usm-vra.adapter';
+import { UvCargosAdapter } from './adapters/uv-cargos.adapter';
 import { sources } from '../../db/schema';
 import { eq } from 'drizzle-orm';
 
@@ -52,6 +53,8 @@ export class ScrapingService {
         return new LaborumAdapter();
       case 'usm_vra':
         return new UsmVraAdapter();
+      case 'uv_cargos':
+        return new UvCargosAdapter();
       default:
         this.logger.warn(`Tipo de scraper desconocido: ${scraperType}`);
         return null;
