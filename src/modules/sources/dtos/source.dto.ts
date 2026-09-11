@@ -3,6 +3,7 @@ import {
   IsString,
   IsOptional,
   IsBoolean,
+  IsUrl,
   MaxLength,
 } from 'class-validator';
 import { ApiProperty, PartialType } from '@nestjs/swagger';
@@ -54,6 +55,16 @@ export class CreateSourceDto {
   category?: string;
 
   @ApiProperty({
+    example: 'https://staticcdn.trabajando.cl/portal-comunidad/abc/assets/logo.png',
+    description: 'URL del logo/icono de la institución',
+    required: false,
+  })
+  @IsUrl()
+  @IsOptional()
+  @MaxLength(500)
+  logoUrl?: string;
+
+  @ApiProperty({
     example: true,
     description: 'Si la fuente está activa para scraping',
     required: false,
@@ -99,6 +110,13 @@ export class SourceResponseDto {
     description: 'Categoría de la institución',
   })
   category: string;
+
+  @ApiProperty({
+    example: 'https://staticcdn.trabajando.cl/portal-comunidad/abc/assets/logo.png',
+    description: 'URL del logo/icono de la institución',
+    nullable: true,
+  })
+  logoUrl: string | null;
 
   @ApiProperty({
     example: true,

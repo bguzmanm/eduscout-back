@@ -1,18 +1,26 @@
 import axios from 'axios';
 import type { ScraperAdapter, RawJob } from './base.interface';
+import {
+  BROWSER_HEADERS,
+  extractNuxtOfferCards,
+  parseNuxtData,
+} from './nuxt.parser';
 
-interface NuxtOferta {
-  idOferta: number;
-  nombreCargo: string;
-  nombreEmpresa: string;
-  descripcionOferta: string;
-  ubicacion: string;
-  nombreJornada: string;
-  fechaPublicacion: string;
-}
-
-interface TrabajandoConfig {
-  comunidad: string;
+interface OfferDetail {
+  slug?: unknown;
+  nombreCargo?: unknown;
+  nombreEmpresaFantasia?: unknown;
+  nombreArea?: unknown;
+  nombreJornada?: unknown;
+  descripcionOferta?: unknown;
+  requisitosMinimos?: unknown;
+  fechaPublicacionFormatoIngles?: unknown;
+  fechaExpiracionFormatoIngles?: unknown;
+  sueldo?: unknown;
+  sueldoDesde?: unknown;
+  sueldoHasta?: unknown;
+  mostrarSueldo?: unknown;
+  ubicacion?: Record<string, unknown>;
 }
 
 export class TrabajandoClAdapter implements ScraperAdapter {
@@ -30,29 +38,21 @@ export class TrabajandoClAdapter implements ScraperAdapter {
     try {
       const { data: html } = await axios.get<string>(
         `https://${this.sourceSlug}.trabajando.cl/`,
-        { timeout: 20000 },
+        {
+          timeout: 20000,
+          headers: BROWSER_HEADERS,
+        },
       );
 
-      const offers = this.extractFromNuxtData(html);
+      const cards = extractNuxtOfferCards(parseNuxtData(html));
 
-      for (const offer of offers) {
-        const region = this.extractRegion(offer.ubicacion);
-
-        jobs.push({
-          externalId: String(offer.idOferta),
-          title: offer.nombreCargo,
-          company: offer.nombreEmpresa || this.sourceName,
-          department: null,
-          location: offer.ubicacion || null,
-          region,
-          jobType: offer.nombreJornada || null,
-          description: offer.descripcionOferta || null,
-          requirements: null,
-          publishedAt: offer.fechaPublicacion
-            ? new Date(offer.fechaPublicacion)
-            : undefined,
-          applyUrl: `https://${this.sourceSlug}.trabajando.cl/trabajo/${offer.idOferta}`,
-        });
+      for (const card of cards) {
+        try {
+          const detail = await this.fetchDetail(card.id);
+          jobs.push(this.mapDetail(card, detail));
+        } catch {
+          jobs.push(this.mapCard(card));
+        }
       }
     } catch (error) {
       console.error(
@@ -63,60 +63,94 @@ export class TrabajandoClAdapter implements ScraperAdapter {
     return jobs;
   }
 
-  private extractFromNuxtData(html: string): NuxtOferta[] {
-    const offers: NuxtOferta[] = [];
-
-    const match = html.match(
-      /<script[^>]*id="__NUXT_DATA__"[^>]*>([\s\S]*?)<\/script>/,
+  private async fetchDetail(id: number): Promise<OfferDetail> {
+    const { data } = await axios.get<OfferDetail>(
+      `https://${this.sourceSlug}.trabajando.cl/api/ofertas/${id}`,
+      {
+        timeout: 20000,
+        headers: BROWSER_HEADERS,
+      },
     );
-    if (!match) return offers;
+    return data;
+  }
 
-    try {
-      const raw = JSON.parse(match[1]) as unknown[];
+  private mapDetail(
+    card: {
+      id: number;
+      title: string;
+      location: string;
+      publishedAt: string;
+    },
+    detail: OfferDetail,
+  ): RawJob {
+    const ubicacion = detail.ubicacion ?? {};
+    const comuna = String(ubicacion.nombreComuna ?? '');
+    const regionName = String(ubicacion.nombreRegion ?? '');
+    const location =
+      comuna && regionName ? `${comuna}, ${regionName}` : card.location;
 
-      for (let i = 0; i < raw.length; i++) {
-        if (raw[i] === 'idOferta') {
-          const offer: Partial<NuxtOferta> = {};
-          offer.idOferta = raw[i + 1] as number;
+    return {
+      externalId: String(card.id),
+      title: String(detail.nombreCargo ?? card.title),
+      company:
+        String(detail.nombreEmpresaFantasia ?? '') || this.sourceName,
+      department: String(detail.nombreArea ?? '') || null,
+      location: location || null,
+      region: regionName || this.extractRegion(card.location),
+      jobType: String(detail.nombreJornada ?? '') || null,
+      description: String(detail.descripcionOferta ?? '') || null,
+      requirements: String(detail.requisitosMinimos ?? '') || null,
+      salaryRange: this.extractSalaryRange(detail),
+      publishedAt: detail.fechaPublicacionFormatoIngles
+        ? new Date(String(detail.fechaPublicacionFormatoIngles))
+        : card.publishedAt
+          ? new Date(card.publishedAt)
+          : undefined,
+      deadline: detail.fechaExpiracionFormatoIngles
+        ? new Date(String(detail.fechaExpiracionFormatoIngles))
+        : undefined,
+      applyUrl: `https://${this.sourceSlug}.trabajando.cl/trabajo/${card.id}`,
+    };
+  }
 
-          for (let j = i + 2; j < Math.min(i + 30, raw.length); j += 2) {
-            const key = raw[j];
-            const val = raw[j + 1];
-            if (typeof key !== 'string') continue;
+  private mapCard(card: {
+    id: number;
+    title: string;
+    company: string;
+    description: string;
+    location: string;
+    jobType: string;
+    publishedAt: string;
+  }): RawJob {
+    return {
+      externalId: String(card.id),
+      title: card.title,
+      company: card.company || this.sourceName,
+      department: null,
+      location: card.location || null,
+      region: this.extractRegion(card.location),
+      jobType: card.jobType || null,
+      description: card.description || null,
+      requirements: null,
+      publishedAt: card.publishedAt ? new Date(card.publishedAt) : undefined,
+      applyUrl: `https://${this.sourceSlug}.trabajando.cl/trabajo/${card.id}`,
+    };
+  }
 
-            switch (key) {
-              case 'nombreCargo':
-                offer.nombreCargo = val as string;
-                break;
-              case 'nombreEmpresa':
-                offer.nombreEmpresa = val as string;
-                break;
-              case 'descripcionOferta':
-                offer.descripcionOferta = val as string;
-                break;
-              case 'ubicacion':
-                offer.ubicacion = val as string;
-                break;
-              case 'nombreJornada':
-                offer.nombreJornada = val as string;
-                break;
-              case 'fechaPublicacion':
-                offer.fechaPublicacion = val as string;
-                break;
-            }
-          }
+  private extractSalaryRange(detail: OfferDetail): string | null {
+    if (!detail.mostrarSueldo) return null;
 
-          if (offer.idOferta && offer.nombreCargo) {
-            offers.push(offer as NuxtOferta);
-          }
-          break;
-        }
-      }
-    } catch {
-      // Could not parse Nuxt data
+    const sueldoDesde = Number(detail.sueldoDesde ?? 0);
+    const sueldoHasta = Number(detail.sueldoHasta ?? 0);
+    const sueldo = Number(detail.sueldo ?? 0);
+
+    if (sueldoDesde > 0 && sueldoHasta > 0) {
+      return `$${sueldoDesde.toLocaleString('es-CL')} - $${sueldoHasta.toLocaleString('es-CL')}`;
     }
-
-    return offers;
+    if (sueldo > 0) {
+      return `$${sueldo.toLocaleString('es-CL')}`;
+    }
+    return null;
   }
 
   private extractRegion(ubicacion: string | null): string | null {

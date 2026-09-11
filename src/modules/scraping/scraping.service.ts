@@ -1,9 +1,11 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Inject } from '@nestjs/common';
+import axios from 'axios';
 import { DRIZZLE_PROVIDER, type DrizzleConnection } from '../database/database.module';
 import { SourcesService } from '../sources/services/sources.service';
 import { JobsRepository } from '../jobs/repositories/jobs.repository';
 import type { ScraperAdapter, RawJob } from './adapters/base.interface';
+import { BROWSER_HEADERS } from './adapters/nuxt.parser';
 import { UchileAdapter } from './adapters/uchile.adapter';
 import { UcAdapter } from './adapters/uc.adapter';
 import { TrabajandoClAdapter } from './adapters/trabajando-cl.adapter';
@@ -117,6 +119,10 @@ export class ScrapingService {
           .set({ lastScraped: new Date() })
           .where(eq(sources.id, source.id));
 
+        if (!source.logoUrl) {
+          await this.backfillLogo(source);
+        }
+
         this.logger.log(
           `${source.name}: ${sourceResult.count} ofertas procesadas`,
         );
@@ -136,5 +142,48 @@ export class ScrapingService {
       `Scraping completado: ${result.totalScraped} ofertas totales`,
     );
     return result;
+  }
+
+  private async backfillLogo(source: {
+    id: number;
+    slug: string;
+    scraperType: string;
+    name: string;
+  }): Promise<void> {
+    try {
+      const logoUrl = await this.inferLogoUrl(source.scraperType, source.slug);
+      if (!logoUrl) return;
+
+      await this.db
+        .update(sources)
+        .set({ logoUrl })
+        .where(eq(sources.id, source.id));
+      this.logger.log(`Logo inferido para ${source.name}: ${logoUrl}`);
+    } catch (error) {
+      this.logger.warn(
+        `No fue posible inferir logo para ${source.name}: ${(error as Error).message}`,
+      );
+    }
+  }
+
+  private async inferLogoUrl(
+    scraperType: string,
+    slug: string,
+  ): Promise<string | null> {
+    if (scraperType !== 'trabajando_cl' && scraperType !== 'santo_tomas') {
+      return null;
+    }
+
+    const subdomain = slug.replace(/-/g, '');
+    const { data } = await axios.get<{ urlLogo?: string }>(
+      `https://${subdomain}.trabajando.cl/api/config/portal`,
+      {
+        params: { dominio: `${subdomain}.trabajando.cl` },
+        timeout: 15000,
+        headers: BROWSER_HEADERS,
+      },
+    );
+
+    return data.urlLogo ?? null;
   }
 }

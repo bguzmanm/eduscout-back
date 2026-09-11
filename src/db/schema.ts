@@ -17,6 +17,7 @@ export const sources = pgTable('sources', {
   baseUrl: text('base_url').notNull(),
   scraperType: varchar('scraper_type', { length: 50 }).notNull(),
   category: varchar('category', { length: 100 }).notNull().default(''),
+  logoUrl: varchar('logo_url', { length: 500 }),
   isActive: boolean('is_active').default(true).notNull(),
   lastScraped: timestamp('last_scraped'),
   createdAt: timestamp('created_at').defaultNow().notNull(),

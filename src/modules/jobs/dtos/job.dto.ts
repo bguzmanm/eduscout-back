@@ -168,6 +168,13 @@ export class JobResponseDto {
     example: 'uchile',
   })
   sourceSlug: string;
+
+  @ApiProperty({
+    description: 'URL del logo/icono de la institución de la fuente',
+    example: 'https://staticcdn.trabajando.cl/portal-comunidad/abc/assets/logo.png',
+    nullable: true,
+  })
+  sourceLogoUrl: string | null;
 }
 
 export class JobStatsResponseDto {

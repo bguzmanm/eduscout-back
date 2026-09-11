@@ -1,8 +1,31 @@
 import axios from 'axios';
-import * as cheerio from 'cheerio';
 import type { ScraperAdapter, RawJob } from './base.interface';
+import {
+  BROWSER_HEADERS,
+  extractNuxtOfferCards,
+  parseNuxtData,
+} from './nuxt.parser';
 
-const BASE_URL = 'https://www.ipsantotomas.cl/trabaja-con-nosotros/academicos/';
+const BASE_URL = 'https://santotomas.trabajando.cl';
+const LISTING_URL = `${BASE_URL}/`;
+const DETAIL_URL = (id: number): string => `${BASE_URL}/api/ofertas/${id}`;
+
+interface OfferDetail {
+  slug?: unknown;
+  nombreCargo?: unknown;
+  nombreEmpresaFantasia?: unknown;
+  nombreArea?: unknown;
+  nombreJornada?: unknown;
+  descripcionOferta?: unknown;
+  requisitosMinimos?: unknown;
+  fechaPublicacionFormatoIngles?: unknown;
+  fechaExpiracionFormatoIngles?: unknown;
+  sueldo?: unknown;
+  sueldoDesde?: unknown;
+  sueldoHasta?: unknown;
+  mostrarSueldo?: unknown;
+  ubicacion?: Record<string, unknown>;
+}
 
 export class SantoTomasAdapter implements ScraperAdapter {
   sourceSlug = 'santo-tomas';
@@ -12,41 +35,24 @@ export class SantoTomasAdapter implements ScraperAdapter {
     const jobs: RawJob[] = [];
 
     try {
-      const { data: html } = await axios.get<string>(BASE_URL, {
-        timeout: 15000,
+      const { data: html } = await axios.get<string>(LISTING_URL, {
+        timeout: 20000,
+        headers: BROWSER_HEADERS,
       });
 
-      const $ = cheerio.load(html);
+      const cards = extractNuxtOfferCards(parseNuxtData(html));
 
-      $('table tbody tr').each((_, row) => {
-        const cells = $(row).find('td');
-        if (cells.length < 4) return;
-
-        const estamento = $(cells[0]).text().trim();
-        const title = $(cells[1]).text().trim();
-        const location = $(cells[2]).text().trim();
-        const applyUrl = $(cells[3]).find('a').attr('href')?.trim();
-
-        if (!title || !applyUrl) return;
-
-        const externalId = applyUrl.replace(/.*\/trabajo\//, '').replace(/\/$/, '');
-
-        jobs.push({
-          externalId,
-          title,
-          company: this.sourceName,
-          department: null,
-          location: location || null,
-          region: this.mapRegion(location),
-          jobType: this.extractJobType(title),
-          description: null,
-          requirements: null,
-          salaryRange: null,
-          publishedAt: null,
-          deadline: null,
-          applyUrl,
-        });
-      });
+      for (const card of cards) {
+        try {
+          const detail = await this.fetchDetail(card.id);
+          const job = this.mapDetail(detail);
+          if (job) jobs.push(job);
+        } catch (error) {
+          console.error(
+            `[SantoTomas] Error al obtener detalle ${card.id}: ${(error as Error).message}`,
+          );
+        }
+      }
     } catch (error) {
       console.error(
         `[SantoTomas] Error al scraping: ${(error as Error).message}`,
@@ -56,47 +62,55 @@ export class SantoTomasAdapter implements ScraperAdapter {
     return jobs;
   }
 
-  private extractJobType(title: string): string | null {
-    const lower = title.toLowerCase();
-    if (lower.includes('jornada completa') || lower.includes('34 horas') || lower.includes('44 horas')) {
-      return 'Jornada Completa';
-    }
-    if (lower.includes('media jornada') || lower.includes('11 horas') || lower.includes('22 horas') || lower.includes('part time')) {
-      return 'Part Time';
-    }
-    if (lower.includes('mixta')) {
-      return 'Mixta';
-    }
-    return null;
+  private async fetchDetail(id: number): Promise<OfferDetail> {
+    const { data } = await axios.get<OfferDetail>(DETAIL_URL(id), {
+      timeout: 20000,
+      headers: BROWSER_HEADERS,
+    });
+    return data;
   }
 
-  private mapRegion(location: string): string | null {
-    const regionMap: Record<string, string> = {
-      'santiago': 'Metropolitana',
-      'casa central': 'Metropolitana',
-      'san joaquín': 'Metropolitana',
-      'san joaquin': 'Metropolitana',
-      'viña': 'Valparaíso',
-      'vina': 'Valparaíso',
-      'valparaíso': 'Valparaíso',
-      'antofagasta': 'Antofagasta',
-      'copiapó': 'Atacama',
-      'copiapo': 'Atacama',
-      'chillán': 'Ñuble',
-      'chillan': 'Ñuble',
-      'concepción': 'Biobío',
-      'concepcion': 'Biobío',
-      'temuco': 'Araucanía',
-      'valdivia': 'Los Ríos',
-      'puerto montt': 'Los Lagos',
-      'punta arenas': 'Magallanes',
-      'iquique': 'Tarapacá',
-      'arica': 'Arica y Parinacota',
-    };
+  private mapDetail(detail: OfferDetail): RawJob | null {
+    const slug = String(detail.slug ?? '');
+    if (!slug) return null;
 
-    const lower = location.toLowerCase();
-    for (const [key, region] of Object.entries(regionMap)) {
-      if (lower.includes(key)) return region;
+    const ubicacion = detail.ubicacion ?? {};
+    const comuna = String(ubicacion.nombreComuna ?? '');
+    const regionName = String(ubicacion.nombreRegion ?? '');
+
+    return {
+      externalId: slug,
+      title: String(detail.nombreCargo ?? ''),
+      company: String(detail.nombreEmpresaFantasia ?? '') || this.sourceName,
+      department: String(detail.nombreArea ?? '') || null,
+      location: comuna && regionName ? `${comuna}, ${regionName}` : null,
+      region: regionName || null,
+      jobType: String(detail.nombreJornada ?? '') || null,
+      description: String(detail.descripcionOferta ?? '') || null,
+      requirements: String(detail.requisitosMinimos ?? '') || null,
+      salaryRange: this.extractSalaryRange(detail),
+      publishedAt: detail.fechaPublicacionFormatoIngles
+        ? new Date(String(detail.fechaPublicacionFormatoIngles))
+        : null,
+      deadline: detail.fechaExpiracionFormatoIngles
+        ? new Date(String(detail.fechaExpiracionFormatoIngles))
+        : null,
+      applyUrl: `${BASE_URL}/trabajo/${slug}`,
+    };
+  }
+
+  private extractSalaryRange(detail: OfferDetail): string | null {
+    if (!detail.mostrarSueldo) return null;
+
+    const sueldoDesde = Number(detail.sueldoDesde ?? 0);
+    const sueldoHasta = Number(detail.sueldoHasta ?? 0);
+    const sueldo = Number(detail.sueldo ?? 0);
+
+    if (sueldoDesde > 0 && sueldoHasta > 0) {
+      return `$${sueldoDesde.toLocaleString('es-CL')} - $${sueldoHasta.toLocaleString('es-CL')}`;
+    }
+    if (sueldo > 0) {
+      return `$${sueldo.toLocaleString('es-CL')}`;
     }
     return null;
   }

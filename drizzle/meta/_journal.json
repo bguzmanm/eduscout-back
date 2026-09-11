@@ -15,6 +15,13 @@
       "when": 1789051410485,
       "tag": "0001_empty_human_robot",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1789130204533,
+      "tag": "0002_overjoyed_shen",
+      "breakpoints": true
     }
   ]
 }

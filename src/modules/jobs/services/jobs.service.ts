@@ -8,12 +8,13 @@ export class JobsService {
   constructor(private readonly jobsRepository: JobsRepository) {}
 
   private toDto(job: Record<string, unknown> & {
-    source?: { name?: string; slug?: string } | null;
+    source?: { name?: string; slug?: string; logoUrl?: string | null } | null;
   }): JobResponseDto {
     return {
       ...job,
       sourceName: job.source?.name ?? 'Desconocida',
       sourceSlug: job.source?.slug ?? 'desconocido',
+      sourceLogoUrl: job.source?.logoUrl ?? null,
     } as unknown as JobResponseDto;
   }
 

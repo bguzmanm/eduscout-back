@@ -29,6 +29,7 @@ export async function seedDatabase(db: DrizzleConnection) {
             baseUrl: 'https://cargosacademicos.uc.cl',
             scraperType: 'wordpress',
             category: 'universidad_privada',
+            logoUrl: 'https://www.uc.cl/site/assets/files/5626/iden01.400x300.png',
           },
           {
             name: 'Universidad de Chile',
@@ -36,6 +37,7 @@ export async function seedDatabase(db: DrizzleConnection) {
             baseUrl: 'https://concurso-academico.uchile.cl',
             scraperType: 'uchile_api',
             category: 'universidad_publica',
+            logoUrl: 'https://uchile.cl/dam/imagenes/Uchile/imagenes-contenidos-generales/LogoUdeChile/02-escudo-uchile-jpg/escudo-uchile-vertical-color.jpg'
           },
           {
             name: 'Universidad Adolfo Ibañez',
@@ -44,6 +46,7 @@ export async function seedDatabase(db: DrizzleConnection) {
               'https://www.uai.cl/ingenieria-y-ciencias/academicos/concursos-academicos',
             scraperType: 'html',
             category: 'universidad_privada',
+            logoUrl: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSE0D1ktlTK9QJ2qSwDKoZruCVxDCSj7B0wP0nAmBklCdap-DuCM616APWO&s=10'
           },
           {
             name: 'Universidad Nacional Andrés Bello',
@@ -52,13 +55,17 @@ export async function seedDatabase(db: DrizzleConnection) {
               'https://unab.trabajando.cl/empleo-categoria/1245-cargos-academicos',
             scraperType: 'trabajando_cl',
             category: 'universidad_privada',
+            logoUrl:
+              'https://staticcdn.trabajando.cl/portal-comunidad/66f4222629ff84227c039ec7/assets/logo.png',
           },
           {
             name: 'Inacap',
             slug: 'inacap',
             baseUrl: 'https://inacap.trabajando.cl',
             scraperType: 'trabajando_cl',
-            category: 'centro_formacion_tecnica',
+            category: 'instituto_profesional',
+            logoUrl:
+              'https://staticcdn.trabajando.cl/portal-comunidad/66f4222629ff84227c039e2a/assets/logo.jpg',
           },
           {
             name: 'Duoc UC',
@@ -66,6 +73,8 @@ export async function seedDatabase(db: DrizzleConnection) {
             baseUrl: 'https://duoc.trabajando.cl',
             scraperType: 'trabajando_cl',
             category: 'instituto_profesional',
+            logoUrl:
+              'https://staticcdn.trabajando.cl/portal-comunidad/66f4222629ff84227c039f4a/assets/logo.png',
           },
           {
             name: 'IP Santo Tomás',
@@ -74,6 +83,8 @@ export async function seedDatabase(db: DrizzleConnection) {
               'https://www.ipsantotomas.cl/trabaja-con-nosotros/academicos/',
             scraperType: 'santo_tomas',
             category: 'instituto_profesional',
+            logoUrl:
+              'https://staticcdn.trabajando.cl/portal-comunidad/66f4222a29ff84227c03a161/assets/logo.png',
           },
           {
             name: 'IP Chile',
@@ -83,9 +94,18 @@ export async function seedDatabase(db: DrizzleConnection) {
             scraperType: 'laborum',
             category: 'instituto_profesional',
           },
+          {
+            name: 'Universidad de Concepción',
+            slug: 'udec',
+            baseUrl: 'https://udec.trabajando.cl/trabajo-empleo/',
+            scraperType: 'trabajando_cl',
+            category: 'universidad_publica',
+            logoUrl:
+              'https://staticcdn.trabajando.cl/portal-comunidad/66f4222629ff84227c039d28/assets/logo.png',
+          },
         ])
         .returning();
-      console.log('✅ 8 fuentes creadas');
+      console.log('✅ 9 fuentes creadas');
     });
 
     console.log('✨ Seeding completado exitosamente');
