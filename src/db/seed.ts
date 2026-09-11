@@ -86,14 +86,20 @@ export async function seedDatabase(db: DrizzleConnection) {
             logoUrl:
               'https://staticcdn.trabajando.cl/portal-comunidad/66f4222a29ff84227c03a161/assets/logo.png',
           },
-          {
+{
             name: 'IP Chile',
             slug: 'ip-chile',
             baseUrl:
               'https://www.laborum.cl/perfiles/empresa_instituto-profesional-de-chile_12054583.html',
             scraperType: 'laborum',
             category: 'instituto_profesional',
-            logoUrl: 'https://saba.cl/wp-content/uploads/2021/04/logos-ipchile-250x250.png'
+          },
+          {
+            name: 'Instituto Profesional Iplacex',
+            slug: 'iplacex',
+            baseUrl: 'https://convocatoriasdocentes.iplacex.cl/',
+            scraperType: 'iplacex_api',
+            category: 'instituto_profesional',
           },
           {
             name: 'Universidad de Concepción',

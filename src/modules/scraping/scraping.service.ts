@@ -12,6 +12,7 @@ import { TrabajandoClAdapter } from './adapters/trabajando-cl.adapter';
 import { UaiAdapter } from './adapters/uai.adapter';
 import { LaborumAdapter } from './adapters/laborum.adapter';
 import { SantoTomasAdapter } from './adapters/santo-tomas.adapter';
+import { IplacexAdapter } from './adapters/iplacex.adapter';
 import { UsmVraAdapter } from './adapters/usm-vra.adapter';
 import { UvCargosAdapter } from './adapters/uv-cargos.adapter';
 import { sources } from '../../db/schema';
@@ -45,6 +46,8 @@ export class ScrapingService {
         return new UcAdapter();
       case 'santo_tomas':
         return new SantoTomasAdapter();
+      case 'iplacex_api':
+        return new IplacexAdapter();
       case 'trabajando_cl':
         return new TrabajandoClAdapter(slug, name);
       case 'html':
