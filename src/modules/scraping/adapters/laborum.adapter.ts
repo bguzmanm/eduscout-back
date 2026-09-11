@@ -1,4 +1,40 @@
+import axios from 'axios';
 import type { ScraperAdapter, RawJob } from './base.interface';
+
+const BASE_URL = 'https://www.laborum.cl';
+const EMPRESA_ID = 12054583;
+const PAGE_SIZE = 50;
+const REQUEST_HEADERS = {
+  'Accept': 'application/json',
+  'Content-Type': 'application/json',
+  'Accept-Language': 'es-CL,es;q=0.9',
+  'Referer': `${BASE_URL}/perfiles/empresa_instituto-profesional-de-chile_${EMPRESA_ID}.html`,
+  'x-site-id': 'BMCL',
+  'User-Agent':
+    'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36',
+};
+
+interface LaborumAviso {
+  id: number;
+  titulo: string;
+  detalle: string;
+  empresa: string;
+  localizacion: string;
+  tipoTrabajo: string;
+  modalidadTrabajo: string;
+  fechaPublicacion: string;
+  cantidadVacantes: number;
+}
+
+interface SearchV2Response {
+  total: number;
+  content: LaborumAviso[];
+}
+
+const JOB_TYPE_MAP: Record<string, string> = {
+  'full-time': 'Jornada Completa',
+  'part time': 'Part Time',
+};
 
 export class LaborumAdapter implements ScraperAdapter {
   sourceSlug = 'ip-chile';
@@ -8,54 +44,19 @@ export class LaborumAdapter implements ScraperAdapter {
     const jobs: RawJob[] = [];
 
     try {
-      const { chromium } = await import('playwright');
-      const browser = await chromium.launch({ headless: true });
-      const page = await browser.newPage();
+      const firstPage = await this.fetchPage(0);
+      const total = firstPage.total;
+      const pages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+      const avisos = firstPage.content;
 
-      await page.goto(
-        'https://www.laborum.cl/perfiles/empresa_instituto-profesional-de-chile_12054583.html',
-        { waitUntil: 'networkidle', timeout: 30000 },
-      );
-
-      await page.waitForSelector('.job-card, .offer-card, [class*="job"]', {
-        timeout: 10000,
-      }).catch(() => {
-        // Selector not found, try alternative
-      });
-
-      const jobCards = await page.$$(
-        '.job-card, .offer-card, [class*="job-item"], [class*="oferta"]',
-      );
-
-      for (const card of jobCards) {
-        const title = await card
-          .textContent()
-          .then((t) => t?.trim().split('\n')[0]);
-
-        if (!title) continue;
-
-        const link = await card.$('a');
-        const href = link ? await link.getAttribute('href') : null;
-
-        const externalId = href?.match(/(\d+)\.html/)?.[1] ?? this.slugify(title);
-
-        jobs.push({
-          externalId,
-          title: title.slice(0, 255),
-          company: this.sourceName,
-          department: null,
-          location: null,
-          region: null,
-          jobType: null,
-          description: null,
-          requirements: null,
-          applyUrl: href?.startsWith('http')
-            ? href
-            : `https://www.laborum.cl${href}`,
-        });
+      for (let page = 1; page < pages; page++) {
+        const data = await this.fetchPage(page);
+        avisos.push(...data.content);
       }
 
-      await browser.close();
+      for (const aviso of avisos) {
+        jobs.push(this.mapAviso(aviso));
+      }
     } catch (error) {
       console.error(
         `[LABORUM] Error al scraping: ${(error as Error).message}`,
@@ -65,11 +66,62 @@ export class LaborumAdapter implements ScraperAdapter {
     return jobs;
   }
 
-  private slugify(text: string): string {
-    return text
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, '-')
-      .replace(/^-|-$/g, '')
-      .slice(0, 255);
+  private async fetchPage(page: number): Promise<SearchV2Response> {
+    const { data } = await axios.post<SearchV2Response>(
+      `${BASE_URL}/api/avisos/searchV2?page=${page}&pageSize=${PAGE_SIZE}`,
+      {
+        empresaId: EMPRESA_ID,
+        filtros: [],
+        tipoDetalle: 'full',
+      },
+      { headers: REQUEST_HEADERS, timeout: 20000 },
+    );
+
+    return data;
+  }
+
+  private mapAviso(aviso: LaborumAviso): RawJob {
+    const [ciudad = null, provincia = null] = (aviso.localizacion || '')
+      .split(',')
+      .map((s) => s.trim());
+
+    return {
+      externalId: String(aviso.id),
+      title: aviso.titulo.slice(0, 255),
+      company: aviso.empresa || this.sourceName,
+      department: null,
+      location: ciudad,
+      region: this.mapRegion(provincia) ?? provincia,
+      jobType: this.mapJobType(aviso.tipoTrabajo),
+      description: aviso.detalle || null,
+      requirements: null,
+      salaryRange: null,
+      publishedAt: this.parseDate(aviso.fechaPublicacion),
+      deadline: null,
+      applyUrl: `${BASE_URL}/empleos/${aviso.id}.html`,
+    };
+  }
+
+  private mapRegion(provincia: string | null): string | null {
+    if (!provincia) return null;
+    const lower = provincia.toLowerCase();
+    if (lower.includes('metropolitana')) return 'Metropolitana';
+    if (lower.startsWith('región ')) {
+      return provincia.slice('región '.length).trim();
+    }
+    return null;
+  }
+
+  private mapJobType(tipo: string): string | null {
+    if (!tipo) return null;
+    const key = tipo.toLowerCase();
+    return JOB_TYPE_MAP[key] ?? tipo;
+  }
+
+  private parseDate(fecha: string): Date | null {
+    if (!fecha) return null;
+    const [day, month, year] = fecha.split('-').map(Number);
+    if (!day || !month || !year) return null;
+    return new Date(year, month - 1, day);
   }
 }
