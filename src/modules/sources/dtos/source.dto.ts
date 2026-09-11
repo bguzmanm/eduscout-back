@@ -136,4 +136,10 @@ export class SourceResponseDto {
     description: 'Fecha de creación',
   })
   createdAt: Date;
+
+  @ApiProperty({
+    example: 12,
+    description: 'Cantidad de ofertas activas de la fuente',
+  })
+  jobCount: number;
 }

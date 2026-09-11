@@ -21,7 +21,7 @@ export class SourcesService {
   }
 
   async findAll() {
-    return this.sourcesRepository.findAll();
+    return this.sourcesRepository.findAllWithCounts();
   }
 
   async findOne(id: number) {
