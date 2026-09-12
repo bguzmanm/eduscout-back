@@ -38,9 +38,3 @@ jobs:
           tags: |
             ghcr.io/${{ github.repository }}:latest
             ghcr.io/${{ github.repository }}:${{ github.sha }}
-
-      - name: Publicar paquete en GHCR
-        run: |
-          gh api -X PATCH "/user/packages/container/${{ github.event.repository.name }}/visibility" -f visibility=public || true
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
