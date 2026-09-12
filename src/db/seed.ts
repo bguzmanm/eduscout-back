@@ -1,4 +1,4 @@
-import { sources, jobs } from './schema';
+import { sources } from './schema';
 import { sql } from 'drizzle-orm';
 import type { PostgresJsDatabase } from 'drizzle-orm/postgres-js';
 import * as schema from './schema';

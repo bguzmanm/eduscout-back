@@ -4,7 +4,7 @@ import axios from 'axios';
 import { DRIZZLE_PROVIDER, type DrizzleConnection } from '../database/database.module';
 import { SourcesService } from '../sources/services/sources.service';
 import { JobsRepository } from '../jobs/repositories/jobs.repository';
-import type { ScraperAdapter, RawJob } from './adapters/base.interface';
+import type { ScraperAdapter } from './adapters/base.interface';
 import { BROWSER_HEADERS } from './adapters/nuxt.parser';
 import { UchileAdapter } from './adapters/uchile.adapter';
 import { UcAdapter } from './adapters/uc.adapter';

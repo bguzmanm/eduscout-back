@@ -79,7 +79,7 @@ export class JobsRepository {
     ]);
 
     return {
-      items: results.map((r) => ({ ...r.jobs, source: (r as any).sources })),
+      items: results.map((r) => ({ ...r.jobs, source: r.sources })),
       meta: {
         page,
         limit,

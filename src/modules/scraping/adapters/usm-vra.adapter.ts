@@ -155,7 +155,7 @@ export class UsmVraAdapter implements ScraperAdapter {
   private sectionByHeading(
     $: cheerio.CheerioAPI,
     headingText: string,
-  ): any | null {
+  ) {
     const heading = $('div[data-elementor-type="single-post"]')
       .find('.elementor-heading-title')
       .filter((_, el) => $(el).text().trim() === headingText)
