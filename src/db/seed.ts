@@ -129,7 +129,7 @@ export async function seedDatabase(db: DrizzleConnection) {
           },
         ])
         .returning();
-      console.log('✅ 11 fuentes creadas');
+      console.log('✅ 12 fuentes creadas');
     });
 
     console.log('✨ Seeding completado exitosamente');
