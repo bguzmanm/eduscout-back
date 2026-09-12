@@ -17,6 +17,7 @@ COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/src ./src
 COPY --from=builder /app/drizzle ./drizzle
 COPY --from=builder /app/drizzle.config.ts ./drizzle.config.ts
+COPY --from=builder /app/scripts ./scripts
 COPY --from=builder /app/package.json ./package.json
 EXPOSE 3001
 CMD ["sh", "-c", "bun run db:migrate && bun dist/src/main.js"]
