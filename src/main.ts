@@ -69,6 +69,8 @@ async function bootstrap() {
     .addTag('sources')
     .addTag('jobs')
     .addTag('scraping')
+    .addTag('auth')
+    .addBearerAuth()
     .build();
   const documentFactory = () => SwaggerModule.createDocument(app, config);
   SwaggerModule.setup('api', app, documentFactory);

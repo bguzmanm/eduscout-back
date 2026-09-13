@@ -6,11 +6,13 @@ import { DatabaseModule } from './modules/database/database.module';
 import { SourcesModule } from './modules/sources/sources.module';
 import { JobsModule } from './modules/jobs/jobs.module';
 import { ScrapingModule } from './modules/scraping/scraping.module';
+import { AuthModule } from './modules/auth/auth.module';
 
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
     ThrottlerModule.forRoot([{ ttl: 60000, limit: 100 }]),
+    AuthModule,
     DatabaseModule,
     SourcesModule,
     JobsModule,

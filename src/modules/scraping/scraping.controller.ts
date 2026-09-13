@@ -1,6 +1,7 @@
-import { Controller, Post, Query } from '@nestjs/common';
+import { Controller, Post, Query, UseGuards } from '@nestjs/common';
 import { ScrapingService } from './scraping.service';
-import { ApiTags, ApiOperation, ApiQuery } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiTags, ApiOperation, ApiQuery, ApiResponse } from '@nestjs/swagger';
+import { AdminAuthGuard } from '../auth/admin-auth.guard';
 
 @ApiTags('scraping')
 @Controller('scraping')
@@ -8,7 +9,10 @@ export class ScrapingController {
   constructor(private readonly scrapingService: ScrapingService) {}
 
   @Post('run')
+  @ApiBearerAuth()
+  @UseGuards(AdminAuthGuard)
   @ApiOperation({ summary: 'Ejecutar scraping manualmente' })
+  @ApiResponse({ status: 401, description: 'No autorizado.' })
   @ApiQuery({
     name: 'source',
     required: false,
