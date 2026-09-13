@@ -93,6 +93,7 @@ export async function seedDatabase(db: DrizzleConnection) {
               'https://www.laborum.cl/perfiles/empresa_instituto-profesional-de-chile_12054583.html',
             scraperType: 'laborum',
             category: 'instituto_profesional',
+            logoUrl: 'https://mir-s3-cdn-cf.behance.net/projects/404/f75a6d143195739.Y3JvcCwyMTM4LDE2NzMsNDA3LDA.png',
           },
           {
             name: 'Instituto Profesional Iplacex',
@@ -100,6 +101,7 @@ export async function seedDatabase(db: DrizzleConnection) {
             baseUrl: 'https://convocatoriasdocentes.iplacex.cl/',
             scraperType: 'iplacex_api',
             category: 'instituto_profesional',
+              logoUrl: 'https://thumb.wikimedia.org/wikipedia/commons/thumb/9/9d/Logo_Iplacex.svg/960px-Logo_Iplacex.svg.png?utm_source=es.wikipedia.org&utm_campaign=index&utm_content=thumbnail',
           },
           {
             name: 'Universidad de Concepción',
