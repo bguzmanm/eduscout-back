@@ -96,7 +96,11 @@ export class JobsRepository {
     });
   }
 
-  async upsert(sourceId: number, externalId: string, data: Partial<typeof schema.jobs.$inferInsert>) {
+  async upsert(
+    sourceId: number,
+    externalId: string,
+    data: Partial<typeof schema.jobs.$inferInsert>,
+  ): Promise<typeof schema.jobs.$inferSelect & { isNew: boolean }> {
     const existing = await this.db.query.jobs.findFirst({
       where: and(
         eq(schema.jobs.sourceId, sourceId),
@@ -110,14 +114,14 @@ export class JobsRepository {
         .set({ ...data, scrapedAt: new Date(), updatedAt: new Date() })
         .where(eq(schema.jobs.id, existing.id))
         .returning();
-      return updated;
+      return { ...updated, isNew: false };
     }
 
     const [created] = await this.db
       .insert(schema.jobs)
       .values({ sourceId, externalId, ...data } as typeof schema.jobs.$inferInsert)
       .returning();
-    return created;
+    return { ...created, isNew: true };
   }
 
   async getStats() {

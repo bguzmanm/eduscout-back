@@ -1,6 +1,12 @@
-import { Controller, Post, Query, UseGuards } from '@nestjs/common';
+import { Controller, Post, Query, Get, UseGuards } from '@nestjs/common';
 import { ScrapingService } from './scraping.service';
-import { ApiBearerAuth, ApiTags, ApiOperation, ApiQuery, ApiResponse } from '@nestjs/swagger';
+import {
+  ApiBearerAuth,
+  ApiTags,
+  ApiOperation,
+  ApiQuery,
+  ApiResponse,
+} from '@nestjs/swagger';
 import { AdminAuthGuard } from '../auth/admin-auth.guard';
 
 @ApiTags('scraping')
@@ -20,5 +26,28 @@ export class ScrapingController {
   })
   async run(@Query('source') sourceSlug?: string) {
     return this.scrapingService.runScraping(sourceSlug);
+  }
+
+  @Get('report')
+  @ApiBearerAuth()
+  @UseGuards(AdminAuthGuard)
+  @ApiOperation({ summary: 'Obtener el último informe de scraping' })
+  @ApiResponse({ status: 401, description: 'No autorizado.' })
+  async getLatestReport() {
+    return this.scrapingService.getLatestReport();
+  }
+
+  @Get('reports')
+  @ApiBearerAuth()
+  @UseGuards(AdminAuthGuard)
+  @ApiOperation({ summary: 'Obtener historial de informes de scraping' })
+  @ApiResponse({ status: 401, description: 'No autorizado.' })
+  @ApiQuery({
+    name: 'limit',
+    required: false,
+    description: 'Cantidad de informes a devolver (máx. 50)',
+  })
+  async getRecentReports(@Query('limit') limit?: string) {
+    return this.scrapingService.getRecentReports(limit ? Number(limit) : 10);
   }
 }

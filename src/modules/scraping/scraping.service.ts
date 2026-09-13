@@ -1,7 +1,9 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Inject } from '@nestjs/common';
 import axios from 'axios';
-import { DRIZZLE_PROVIDER, type DrizzleConnection } from '../database/database.module';
+import { eq } from 'drizzle-orm';
+import { PostgresJsDatabase } from 'drizzle-orm/postgres-js';
+import { DRIZZLE_PROVIDER } from '../database/database.module';
 import { SourcesService } from '../sources/services/sources.service';
 import { JobsRepository } from '../jobs/repositories/jobs.repository';
 import type { ScraperAdapter } from './adapters/base.interface';
@@ -15,12 +17,29 @@ import { SantoTomasAdapter } from './adapters/santo-tomas.adapter';
 import { IplacexAdapter } from './adapters/iplacex.adapter';
 import { UsmVraAdapter } from './adapters/usm-vra.adapter';
 import { UvCargosAdapter } from './adapters/uv-cargos.adapter';
-import { sources } from '../../db/schema';
-import { eq } from 'drizzle-orm';
+import { sources, scrapingRuns, type ScrapingRunSource } from '../../db/schema';
+import * as schema from '../../db/schema';
+import { TelegramService, type ScrapingRunReport } from './telegram.service';
+
+export interface SourceScrapeResult {
+  count: number;
+  newCount: number;
+  updatedCount: number;
+  errorCount: number;
+  durationMs: number;
+  status: 'ok' | 'error';
+  errors: string[];
+}
 
 export interface ScrapingResult {
   totalScraped: number;
-  perSource: Record<string, { count: number; errors: string[] }>;
+  totalNew: number;
+  totalUpdated: number;
+  totalErrors: number;
+  durationMs: number;
+  status: 'completed' | 'failed';
+  runId: number;
+  perSource: Record<string, SourceScrapeResult>;
 }
 
 @Injectable()
@@ -30,8 +49,9 @@ export class ScrapingService {
   constructor(
     private readonly sourcesService: SourcesService,
     private readonly jobsRepository: JobsRepository,
-    @Inject(DRIZZLE_PROVIDER)
-    private readonly db: DrizzleConnection,
+    private readonly telegramService: TelegramService,
+@Inject(DRIZZLE_PROVIDER)
+  private readonly db: PostgresJsDatabase<typeof schema>,
   ) {}
 
   private getAdapter(
@@ -65,42 +85,186 @@ export class ScrapingService {
   }
 
   async runScraping(sourceSlug?: string): Promise<ScrapingResult> {
+    const startedAt = new Date();
+    const [runRow] = await this.db
+      .insert(scrapingRuns)
+      .values({ startedAt, status: 'running' })
+      .returning();
+    const runId = runRow.id;
+
+    const perSourceEntries: ScrapingRunSource[] = [];
+    const perSource: Record<string, SourceScrapeResult> = {};
+    let totalNew = 0;
+    let totalUpdated = 0;
+    let totalErrors = 0;
+
     this.logger.log(
       `Iniciando scraping${sourceSlug ? ` para ${sourceSlug}` : ' (todas las fuentes)'}`,
     );
 
-    const activeSources = sourceSlug
-      ? [await this.sourcesService.findBySlug(sourceSlug)]
-      : await this.sourcesService.findActiveSources();
+    try {
+      const activeSources = sourceSlug
+        ? [await this.sourcesService.findBySlug(sourceSlug)]
+        : await this.sourcesService.findActiveSources();
 
-    const result: ScrapingResult = {
-      totalScraped: 0,
-      perSource: {},
-    };
-
-    for (const source of activeSources) {
-      const sourceResult = { count: 0, errors: [] as string[] };
-      result.perSource[source.slug] = sourceResult;
-
-      const adapter = this.getAdapter(
-        source.scraperType,
-        source.slug,
-        source.name,
-      );
-      if (!adapter) {
-        sourceResult.errors.push(
-          `Tipo de scraper no soportado: ${source.scraperType}`,
-        );
-        continue;
+      for (const source of activeSources) {
+        const entry = await this.scrapeSource(source);
+        perSourceEntries.push(entry);
+        perSource[source.slug] = {
+          count: entry.newCount + entry.updatedCount,
+          newCount: entry.newCount,
+          updatedCount: entry.updatedCount,
+          errorCount: entry.errorCount,
+          durationMs: entry.durationMs,
+          status: entry.status,
+          errors: entry.errors,
+        };
+        totalNew += entry.newCount;
+        totalUpdated += entry.updatedCount;
+        totalErrors += entry.errorCount;
       }
 
-      try {
-        this.logger.log(`Scraping ${source.name}...`);
-        const rawJobs = await adapter.fetchListings();
+      const durationMs = Date.now() - startedAt.getTime();
+      const hasSources = activeSources.length > 0;
+      const allFailed =
+        hasSources &&
+        perSourceEntries.every((s) => s.status === 'error');
+      const status: 'completed' | 'failed' =
+        !hasSources || allFailed ? 'failed' : 'completed';
 
-        for (const rawJob of rawJobs) {
-          try {
-            await this.jobsRepository.upsert(source.id, rawJob.externalId, {
+      await this.db
+        .update(scrapingRuns)
+        .set({
+          status,
+          finishedAt: new Date(),
+          totalNew,
+          totalUpdated,
+          totalErrors,
+          durationMs,
+          perSource: perSourceEntries,
+        })
+        .where(eq(scrapingRuns.id, runId));
+
+      const report: ScrapingRunReport = {
+        id: runId,
+        status,
+        startedAt: startedAt.toISOString(),
+        durationMs,
+        totalNew,
+        totalUpdated,
+        totalErrors,
+        perSource: perSourceEntries,
+      };
+      await this.telegramService.sendReport(report);
+
+      const totalScraped = totalNew + totalUpdated;
+      this.logger.log(
+        `Scraping completado: ${totalScraped} ofertas (${totalNew} nuevas, ${totalUpdated} actualizadas, ${totalErrors} errores)`,
+      );
+
+      return {
+        totalScraped,
+        totalNew,
+        totalUpdated,
+        totalErrors,
+        durationMs,
+        status,
+        runId,
+        perSource,
+      };
+    } catch (error) {
+      const durationMs = Date.now() - startedAt.getTime();
+      this.logger.error(
+        `Error en scraping: ${(error as Error).message}`,
+      );
+
+      await this.db
+        .update(scrapingRuns)
+        .set({
+          status: 'failed',
+          finishedAt: new Date(),
+          totalNew,
+          totalUpdated,
+          totalErrors,
+          durationMs,
+          perSource: perSourceEntries,
+        })
+        .where(eq(scrapingRuns.id, runId))
+        .catch((saveError) => {
+          this.logger.error(
+            `No fue posible guardar el run ${runId}: ${(saveError as Error).message}`,
+          );
+        });
+
+      const report: ScrapingRunReport = {
+        id: runId,
+        status: 'failed',
+        startedAt: startedAt.toISOString(),
+        durationMs,
+        totalNew,
+        totalUpdated,
+        totalErrors,
+        perSource: perSourceEntries,
+      };
+      await this.telegramService.sendReport(report);
+
+      return {
+        totalScraped: totalNew + totalUpdated,
+        totalNew,
+        totalUpdated,
+        totalErrors,
+        durationMs,
+        status: 'failed',
+        runId,
+        perSource,
+      };
+    }
+  }
+
+  private async scrapeSource(source: {
+    id: number;
+    slug: string;
+    scraperType: string;
+    name: string;
+    logoUrl: string | null;
+  }): Promise<ScrapingRunSource> {
+    const startedAt = Date.now();
+    const entry: ScrapingRunSource = {
+      slug: source.slug,
+      name: source.name,
+      status: 'ok',
+      newCount: 0,
+      updatedCount: 0,
+      errorCount: 0,
+      errors: [],
+      durationMs: 0,
+    };
+
+    const adapter = this.getAdapter(
+      source.scraperType,
+      source.slug,
+      source.name,
+    );
+    if (!adapter) {
+      entry.status = 'error';
+      entry.errorCount = 1;
+      entry.errors.push(
+        `Tipo de scraper no soportado: ${source.scraperType}`,
+      );
+      entry.durationMs = Date.now() - startedAt;
+      return entry;
+    }
+
+    try {
+      this.logger.log(`Scraping ${source.name}...`);
+      const rawJobs = await adapter.fetchListings();
+
+      for (const rawJob of rawJobs) {
+        try {
+          const saved = await this.jobsRepository.upsert(
+            source.id,
+            rawJob.externalId,
+            {
               title: rawJob.title,
               company: rawJob.company,
               department: rawJob.department,
@@ -114,43 +278,63 @@ export class ScrapingService {
               deadline: rawJob.deadline,
               applyUrl: rawJob.applyUrl,
               isActive: true,
-            });
-            sourceResult.count++;
-          } catch (error) {
-            sourceResult.errors.push(
-              `Error al guardar oferta ${rawJob.externalId}: ${(error as Error).message}`,
-            );
+            },
+          );
+          if (saved.isNew) {
+            entry.newCount++;
+          } else {
+            entry.updatedCount++;
           }
+        } catch (error) {
+          entry.errorCount++;
+          entry.errors.push(
+            `Error al guardar oferta ${rawJob.externalId}: ${(error as Error).message}`,
+          );
         }
-
-        await this.db
-          .update(sources)
-          .set({ lastScraped: new Date() })
-          .where(eq(sources.id, source.id));
-
-        if (!source.logoUrl) {
-          await this.backfillLogo(source);
-        }
-
-        this.logger.log(
-          `${source.name}: ${sourceResult.count} ofertas procesadas`,
-        );
-      } catch (error) {
-        sourceResult.errors.push(
-          `Error general en scraping: ${(error as Error).message}`,
-        );
-        this.logger.error(
-          `Error en ${source.name}: ${(error as Error).message}`,
-        );
       }
 
-      result.totalScraped += sourceResult.count;
+      await this.db
+        .update(sources)
+        .set({ lastScraped: new Date() })
+        .where(eq(sources.id, source.id));
+
+      if (!source.logoUrl) {
+        await this.backfillLogo(source);
+      }
+
+      this.logger.log(
+        `${source.name}: ${entry.newCount} nuevas, ${entry.updatedCount} actualizadas, ${entry.errorCount} errores`,
+      );
+    } catch (error) {
+      entry.status = 'error';
+      entry.errorCount++;
+      entry.errors.push(
+        `Error general en scraping: ${(error as Error).message}`,
+      );
+      this.logger.error(
+        `Error en ${source.name}: ${(error as Error).message}`,
+      );
     }
 
-    this.logger.log(
-      `Scraping completado: ${result.totalScraped} ofertas totales`,
-    );
-    return result;
+    if (entry.errorCount > 0) {
+      entry.status = 'error';
+    }
+    entry.durationMs = Date.now() - startedAt;
+    return entry;
+  }
+
+  async getLatestReport() {
+    return this.db.query.scrapingRuns.findFirst({
+      orderBy: (runs, { desc }) => [desc(runs.id)],
+    });
+  }
+
+  async getRecentReports(limit = 10) {
+    const safeLimit = Math.min(Math.max(limit, 1), 50);
+    return this.db.query.scrapingRuns.findMany({
+      orderBy: (runs, { desc }) => [desc(runs.id)],
+      limit: safeLimit,
+    });
   }
 
   private async backfillLogo(source: {

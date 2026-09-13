@@ -6,9 +6,34 @@ import {
   varchar,
   integer,
   boolean,
+  jsonb,
   unique,
 } from 'drizzle-orm/pg-core';
 import { relations } from 'drizzle-orm';
+
+export interface ScrapingRunSource {
+  slug: string;
+  name: string;
+  status: 'ok' | 'error';
+  newCount: number;
+  updatedCount: number;
+  errorCount: number;
+  errors: string[];
+  durationMs: number;
+}
+
+export const scrapingRuns = pgTable('scraping_runs', {
+  id: serial('id').primaryKey(),
+  startedAt: timestamp('started_at').notNull(),
+  finishedAt: timestamp('finished_at'),
+  status: varchar('status', { length: 20 }).notNull().default('running'),
+  totalNew: integer('total_new').default(0).notNull(),
+  totalUpdated: integer('total_updated').default(0).notNull(),
+  totalErrors: integer('total_errors').default(0).notNull(),
+  durationMs: integer('duration_ms'),
+  perSource: jsonb('per_source').$type<ScrapingRunSource[]>(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
 
 export const sources = pgTable('sources', {
   id: serial('id').primaryKey(),

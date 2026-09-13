@@ -6,10 +6,11 @@ import { AuthModule } from '../auth/auth.module';
 import { ScrapingService } from './scraping.service';
 import { ScrapingController } from './scraping.controller';
 import { ScrapingScheduler } from './scraping.scheduler';
+import { TelegramService } from './telegram.service';
 
 @Module({
   imports: [DatabaseModule, SourcesModule, JobsModule, AuthModule],
   controllers: [ScrapingController],
-  providers: [ScrapingService, ScrapingScheduler],
+  providers: [ScrapingService, ScrapingScheduler, TelegramService],
 })
 export class ScrapingModule {}
