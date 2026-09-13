@@ -36,16 +36,7 @@ export class TelegramService {
     const text = this.formatReport(report);
 
     try {
-      await axios.post(
-        `https://api.telegram.org/bot${this.botToken}/sendMessage`,
-        {
-          chat_id: Number(this.chatId),
-          text,
-          parse_mode: 'HTML',
-          disable_web_page_preview: true,
-        },
-        { timeout: 15000 },
-      );
+      await this.postMessage(text);
       this.logger.log(`Informe enviado a Telegram (run #${report.id})`);
       return true;
     } catch (error) {
@@ -54,6 +45,45 @@ export class TelegramService {
       );
       return false;
     }
+  }
+
+  async sendMessage(text: string): Promise<boolean> {
+    if (!this.botToken || !this.chatId) {
+      this.logger.warn(
+        'Telegram no configurado: faltan TELEGRAM_BOT_TOKEN y TELEGRAM_CHAT_ID',
+      );
+      return false;
+    }
+
+    try {
+      await this.postMessage(text);
+      this.logger.log('Mensaje enviado a Telegram');
+      return true;
+    } catch (error) {
+      this.logger.error(
+        `Error al enviar mensaje a Telegram: ${(error as Error).message}`,
+      );
+      return false;
+    }
+  }
+
+  private async postMessage(text: string): Promise<void> {
+    if (!this.botToken || !this.chatId) {
+      throw new Error(
+        'Telegram no configurado: faltan TELEGRAM_BOT_TOKEN y TELEGRAM_CHAT_ID',
+      );
+    }
+
+    await axios.post(
+      `https://api.telegram.org/bot${this.botToken}/sendMessage`,
+      {
+        chat_id: Number(this.chatId),
+        text,
+        parse_mode: 'HTML',
+        disable_web_page_preview: true,
+      },
+      { timeout: 15000 },
+    );
   }
 
   private formatReport(report: ScrapingRunReport): string {
@@ -112,7 +142,35 @@ export class TelegramService {
     return full;
   }
 
-  private formatDuration(durationMs: number | null): string {
+  formatStatus(report: ScrapingRunReport): string {
+    const started = new Date(report.startedAt);
+    const dateStr = started.toLocaleDateString('es-CL', {
+      day: 'numeric',
+      month: 'short',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+    const isFailed = report.status === 'failed';
+    const statusEmoji = isFailed ? '❌' : '✅';
+    const errorWord = report.totalErrors === 1 ? 'error' : 'errores';
+
+    const lines: string[] = [];
+    lines.push('📊 <b>EduScout — Último scraping</b>');
+    lines.push(
+      `🗓 ${dateStr} · ⏱ ${this.formatDuration(report.durationMs)} · ${statusEmoji} <b>${isFailed ? 'Fallido' : 'Completado'}</b>`,
+    );
+    lines.push(
+      `<b>Total:</b> ${report.totalNew} nuevas · ${report.totalUpdated} actualizadas · ${report.totalErrors} ${errorWord} · run #${report.id}`,
+    );
+    lines.push(
+      `Detalle por fuente: ${report.perSource.length} fuente${report.perSource.length === 1 ? '' : 's'} procesadas.`,
+    );
+
+    const full = lines.join('\n');
+    return full.length > 4096 ? full.slice(0, 4096) : full;
+  }
+
+  formatDuration(durationMs: number | null): string {
     if (durationMs === null) return '—';
     const seconds = Math.round(durationMs / 1000);
     if (seconds < 60) return `${seconds}s`;
@@ -124,7 +182,7 @@ export class TelegramService {
     return text.length > max ? `${text.slice(0, max - 1)}…` : text;
   }
 
-  private escapeHtml(text: string): string {
+  escapeHtml(text: string): string {
     return text
       .replace(/&/g, '&amp;')
       .replace(/</g, '&lt;')

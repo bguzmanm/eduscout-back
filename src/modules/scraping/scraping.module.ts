@@ -7,10 +7,16 @@ import { ScrapingService } from './scraping.service';
 import { ScrapingController } from './scraping.controller';
 import { ScrapingScheduler } from './scraping.scheduler';
 import { TelegramService } from './telegram.service';
+import { TelegramBotService } from './telegram-bot.service';
 
 @Module({
   imports: [DatabaseModule, SourcesModule, JobsModule, AuthModule],
   controllers: [ScrapingController],
-  providers: [ScrapingService, ScrapingScheduler, TelegramService],
+  providers: [
+    ScrapingService,
+    ScrapingScheduler,
+    TelegramService,
+    TelegramBotService,
+  ],
 })
 export class ScrapingModule {}
