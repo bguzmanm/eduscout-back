@@ -7,8 +7,16 @@ import {
 import type { Request } from 'express';
 import { AuthService } from './auth.service';
 
+export interface AuthenticatedRequest extends Request {
+  candidateId: number;
+}
+
+export function getCandidateId(request: Request): number {
+  return (request as AuthenticatedRequest).candidateId;
+}
+
 @Injectable()
-export class AdminAuthGuard implements CanActivate {
+export class CandidateAuthGuard implements CanActivate {
   constructor(private readonly authService: AuthService) {}
 
   canActivate(context: ExecutionContext): boolean {
@@ -21,9 +29,16 @@ export class AdminAuthGuard implements CanActivate {
     const payload = this.authService.verifyToken(
       header.slice('Bearer '.length),
     );
-    if (payload.role !== undefined && payload.role !== 'admin') {
-      throw new UnauthorizedException('Se requiere autenticación de admin');
+    if (payload.role !== 'candidate') {
+      throw new UnauthorizedException('Se requiere autenticación de postulante');
     }
+
+    const candidateId = Number(payload.sub.replace('candidate:', ''));
+    if (!Number.isInteger(candidateId) || candidateId <= 0) {
+      throw new UnauthorizedException('Token inválido');
+    }
+
+    (request as AuthenticatedRequest).candidateId = candidateId;
     return true;
   }
 }

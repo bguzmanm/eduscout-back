@@ -20,6 +20,7 @@ import { UvCargosAdapter } from './adapters/uv-cargos.adapter';
 import { sources, scrapingRuns, type ScrapingRunSource } from '../../db/schema';
 import * as schema from '../../db/schema';
 import { TelegramService, type ScrapingRunReport } from './telegram.service';
+import { AlertMatchingService } from '../alerts/alert-matching.service';
 
 export interface SourceScrapeResult {
   count: number;
@@ -50,6 +51,7 @@ export class ScrapingService {
     private readonly sourcesService: SourcesService,
     private readonly jobsRepository: JobsRepository,
     private readonly telegramService: TelegramService,
+    private readonly alertMatchingService: AlertMatchingService,
 @Inject(DRIZZLE_PROVIDER)
   private readonly db: PostgresJsDatabase<typeof schema>,
   ) {}
@@ -157,6 +159,8 @@ export class ScrapingService {
       };
       await this.telegramService.sendReport(report);
 
+      await this.matchAlertsForRun(startedAt);
+
       const totalScraped = totalNew + totalUpdated;
       this.logger.log(
         `Scraping completado: ${totalScraped} ofertas (${totalNew} nuevas, ${totalUpdated} actualizadas, ${totalErrors} errores)`,
@@ -207,6 +211,7 @@ export class ScrapingService {
         perSource: perSourceEntries,
       };
       await this.telegramService.sendReport(report);
+      await this.matchAlertsForRun(startedAt);
 
       return {
         totalScraped: totalNew + totalUpdated,
@@ -218,6 +223,19 @@ export class ScrapingService {
         runId,
         perSource,
       };
+    }
+  }
+
+  private async matchAlertsForRun(startedAt: Date): Promise<void> {
+    try {
+      const matched = await this.alertMatchingService.matchNewJobs(startedAt);
+      if (matched > 0) {
+        this.logger.log(`Alertas: ${matched} nuevos matches generados`);
+      }
+    } catch (error) {
+      this.logger.error(
+        `No se pudieron evaluar las alertas para este run: ${(error as Error).message}`,
+      );
     }
   }
 

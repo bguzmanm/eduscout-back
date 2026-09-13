@@ -7,6 +7,8 @@ import { SourcesModule } from './modules/sources/sources.module';
 import { JobsModule } from './modules/jobs/jobs.module';
 import { ScrapingModule } from './modules/scraping/scraping.module';
 import { AuthModule } from './modules/auth/auth.module';
+import { CandidatesModule } from './modules/candidates/candidates.module';
+import { AlertsModule } from './modules/alerts/alerts.module';
 
 @Module({
   imports: [
@@ -17,6 +19,8 @@ import { AuthModule } from './modules/auth/auth.module';
     SourcesModule,
     JobsModule,
     ScrapingModule,
+    CandidatesModule,
+    AlertsModule,
   ],
   providers: [
     {

@@ -8,6 +8,7 @@ import { createHmac, timingSafeEqual } from 'node:crypto';
 interface TokenPayload {
   sub: string;
   exp: number;
+  role?: 'admin' | 'candidate';
 }
 
 export interface LoginResult {
@@ -22,6 +23,8 @@ export class AuthService {
   private readonly passwordHash: Buffer;
   private readonly secret: string;
   private readonly ttlMs: number;
+  private readonly candidateSecret: string;
+  private readonly candidateTtlMs: number;
 
   constructor(private readonly configService: ConfigService) {
     this.username = this.configService.get<string>(
@@ -40,6 +43,13 @@ export class AuthService {
     this.ttlMs = Number(
       this.configService.get('ADMIN_TOKEN_TTL_MS', '7200000'),
     );
+    this.candidateSecret = this.configService.get<string>(
+      'CANDIDATE_TOKEN_SECRET',
+      'dev-candidate-secret-eduscout-cambiar-en-produccion',
+    );
+    this.candidateTtlMs = Number(
+      this.configService.get('CANDIDATE_TOKEN_TTL_MS', '604800000'),
+    );
   }
 
   login(username: string, password: string): LoginResult {
@@ -57,14 +67,24 @@ export class AuthService {
     }
 
     const now = Date.now();
-    const payload: TokenPayload = { sub: this.username, exp: now + this.ttlMs };
-    const token = this.sign(payload);
-
-    return {
-      token,
-      expiresAt: new Date(payload.exp).toISOString(),
-      expiresIn: this.ttlMs,
+    const payload: TokenPayload = {
+      sub: this.username,
+      exp: now + this.ttlMs,
+      role: 'admin',
     };
+
+    return this.buildLoginResult(payload, this.secret);
+  }
+
+  issueCandidateToken(candidateId: number): LoginResult {
+    const now = Date.now();
+    const payload: TokenPayload = {
+      sub: `candidate:${candidateId}`,
+      exp: now + this.candidateTtlMs,
+      role: 'candidate',
+    };
+
+    return this.buildLoginResult(payload, this.candidateSecret);
   }
 
   verifyToken(token: string): TokenPayload {
@@ -73,7 +93,8 @@ export class AuthService {
       throw new UnauthorizedException('Token inválido');
     }
 
-    const expected = this.signature(body);
+    const payload = this.decode(body);
+    const expected = this.signature(body, payload.role === 'candidate' ? this.candidateSecret : this.secret);
     const signatureBuffer = Buffer.from(signature);
     const expectedBuffer = Buffer.from(expected);
     if (
@@ -83,7 +104,6 @@ export class AuthService {
       throw new UnauthorizedException('Token inválido');
     }
 
-    const payload = this.decode(body);
     if (payload.exp <= Date.now()) {
       throw new UnauthorizedException('La sesión ha expirado');
     }
@@ -91,13 +111,27 @@ export class AuthService {
     return payload;
   }
 
-  private sign(payload: TokenPayload): string {
+  private buildLoginResult(
+    payload: TokenPayload,
+    secret: string,
+  ): LoginResult {
     const body = this.encode(payload);
-    return `${body}.${this.signature(body)}`;
+    const token = `${body}.${this.signature(body, secret)}`;
+
+    return {
+      token,
+      expiresAt: new Date(payload.exp).toISOString(),
+      expiresIn: payload.exp - Date.now(),
+    };
   }
 
-  private signature(body: string): string {
-    return createHmac('sha256', this.secret).update(body).digest('base64url');
+  private sign(payload: TokenPayload, secret: string): string {
+    const body = this.encode(payload);
+    return `${body}.${this.signature(body, secret)}`;
+  }
+
+  private signature(body: string, secret: string): string {
+    return createHmac('sha256', secret).update(body).digest('base64url');
   }
 
   private encode(payload: TokenPayload): string {

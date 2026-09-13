@@ -7,6 +7,9 @@ export class SanitizeHtmlPipe implements PipeTransform {
     if (typeof value === 'string') {
       return stripHtml(value);
     }
+    if (ArrayBuffer.isView(value) || value instanceof ArrayBuffer) {
+      return value;
+    }
     if (Array.isArray(value)) {
       return value.map((item) => this.transform(item));
     }
