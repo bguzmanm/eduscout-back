@@ -130,6 +130,11 @@ export class JobsRepository {
       .from(schema.jobs)
       .where(eq(schema.jobs.isActive, true));
 
+    const activeSourcesResult = await this.db
+      .select({ count: count() })
+      .from(schema.sources)
+      .where(eq(schema.sources.isActive, true));
+
     const bySource = await this.db
       .select({
         source: schema.sources.slug,
@@ -153,6 +158,7 @@ export class JobsRepository {
 
     return {
       totalActive: Number(totalResult[0]?.count ?? 0),
+      activeSources: Number(activeSourcesResult[0]?.count ?? 0),
       bySource: bySource.map((r) => ({
         source: r.source ?? 'desconocido',
         count: Number(r.count),

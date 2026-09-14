@@ -203,4 +203,10 @@ export class JobStatsResponseDto {
     example: 85,
   })
   totalActive: number;
+
+  @ApiProperty({
+    description: 'Total de fuentes activas',
+    example: 12,
+  })
+  activeSources: number;
 }
