@@ -1,6 +1,7 @@
 import { IsOptional, IsString, IsDateString } from 'class-validator';
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiExtraModels, ApiProperty, getSchemaPath } from '@nestjs/swagger';
 import { PaginationDto } from '../../../common/dto/pagination.dto';
+import type { PaginationMeta } from '../../../common/types';
 
 export class SearchJobsDto extends PaginationDto {
   @ApiProperty({
@@ -209,4 +210,20 @@ export class JobStatsResponseDto {
     example: 12,
   })
   activeSources: number;
+}
+
+@ApiExtraModels(JobResponseDto)
+export class JobsPageResponseDto {
+  @ApiProperty({
+    description: 'Ofertas de la página',
+    type: 'array',
+    items: { $ref: getSchemaPath(JobResponseDto) },
+  })
+  items: JobResponseDto[];
+
+  @ApiProperty({
+    description: 'Metadatos de paginación',
+    example: { page: 1, limit: 20, total: 85, totalPages: 5 },
+  })
+  meta: PaginationMeta;
 }

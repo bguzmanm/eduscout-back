@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { Logger } from '@nestjs/common';
 import * as cheerio from 'cheerio';
 import type { ScraperAdapter, RawJob } from './base.interface';
 
@@ -7,6 +8,7 @@ const BASE_URL = 'https://cargosacademicos.uc.cl';
 export class UcAdapter implements ScraperAdapter {
   sourceSlug = 'uc';
   sourceName = 'Pontificia Universidad Católica de Chile';
+  private readonly logger = new Logger('UcAdapter');
 
   async fetchListings(): Promise<RawJob[]> {
     const jobs: RawJob[] = [];
@@ -56,8 +58,8 @@ export class UcAdapter implements ScraperAdapter {
         });
       });
     } catch (error) {
-      console.error(
-        `[UC] Error al scraping: ${(error as Error).message}`,
+      this.logger.error(
+        `Error al scraping: ${(error as Error).message}`,
       );
     }
 

@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { Logger } from '@nestjs/common';
 import type { ScraperAdapter, RawJob } from './base.interface';
 
 interface UchileConcurso {
@@ -29,6 +30,7 @@ const API_BASE = 'https://concurso-academico.uchile.cl/api';
 export class UchileAdapter implements ScraperAdapter {
   sourceSlug = 'uchile';
   sourceName = 'Universidad de Chile';
+  private readonly logger = new Logger('UchileAdapter');
 
   async fetchListings(): Promise<RawJob[]> {
     const jobs: RawJob[] = [];
@@ -67,8 +69,8 @@ export class UchileAdapter implements ScraperAdapter {
         }
       }
     } catch (error) {
-      console.error(
-        `[UCHILE] Error al scraping: ${(error as Error).message}`,
+      this.logger.error(
+        `Error al scraping: ${(error as Error).message}`,
       );
     }
 

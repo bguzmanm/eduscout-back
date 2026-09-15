@@ -21,7 +21,7 @@ export class AdminAuthGuard implements CanActivate {
     const payload = this.authService.verifyToken(
       header.slice('Bearer '.length),
     );
-    if (payload.role !== undefined && payload.role !== 'admin') {
+    if (payload.role !== 'admin') {
       throw new UnauthorizedException('Se requiere autenticación de admin');
     }
     return true;

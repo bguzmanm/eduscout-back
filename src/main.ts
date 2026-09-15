@@ -15,6 +15,11 @@ async function bootstrap() {
   });
 
   const configService = app.get(ConfigService);
+  const isProduction =
+    configService.get<string>('NODE_ENV', 'development') === 'production';
+  const connectSrc = isProduction
+    ? ["'self'"]
+    : ["'self'", 'http://localhost:3000', 'http://localhost:3001'];
 
   app.use(
     helmet({
@@ -22,15 +27,15 @@ async function bootstrap() {
       contentSecurityPolicy: {
         directives: {
           defaultSrc: ["'self'"],
-          scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'"],
+          scriptSrc: ["'self'", "'unsafe-inline'"],
           styleSrc: ["'self'", "'unsafe-inline'"],
           imgSrc: ["'self'", 'data:'],
-          connectSrc: [
-            "'self'",
-            'http://localhost:3000',
-            'http://localhost:3001',
-          ],
+          connectSrc,
           fontSrc: ["'self'"],
+          objectSrc: ["'none'"],
+          frameAncestors: ["'none'"],
+          baseUri: ["'self'"],
+          formAction: ["'self'"],
         },
       },
     }),

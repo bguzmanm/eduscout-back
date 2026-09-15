@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { Logger } from '@nestjs/common';
 import type { ScraperAdapter, RawJob } from './base.interface';
 
 const API_BASE = 'https://iplacex-desarrollo-p3asqz2yga-tl.a.run.app';
@@ -39,6 +40,7 @@ const REGION_MAP: Record<string, string> = {
 export class IplacexAdapter implements ScraperAdapter {
   sourceSlug = 'iplacex';
   sourceName = 'Instituto Profesional Iplacex';
+  private readonly logger = new Logger('IplacexAdapter');
 
   async fetchListings(): Promise<RawJob[]> {
     const jobs: RawJob[] = [];
@@ -81,8 +83,8 @@ export class IplacexAdapter implements ScraperAdapter {
         });
       }
     } catch (error) {
-      console.error(
-        `[Iplacex] Error al scraping: ${(error as Error).message}`,
+      this.logger.error(
+        `Error al scraping: ${(error as Error).message}`,
       );
     }
 

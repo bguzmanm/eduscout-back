@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { Logger } from '@nestjs/common';
 import type { ScraperAdapter, RawJob } from './base.interface';
 import {
   BROWSER_HEADERS,
@@ -26,6 +27,7 @@ interface OfferDetail {
 export class TrabajandoClAdapter implements ScraperAdapter {
   sourceSlug = '';
   sourceName = '';
+  private readonly logger = new Logger('TrabajandoClAdapter');
 
   constructor(slug: string, name: string) {
     this.sourceSlug = slug;
@@ -55,8 +57,8 @@ export class TrabajandoClAdapter implements ScraperAdapter {
         }
       }
     } catch (error) {
-      console.error(
-        `[${this.sourceSlug}] Error al scraping: ${(error as Error).message}`,
+      this.logger.error(
+        `Error al scraping: ${(error as Error).message}`,
       );
     }
 

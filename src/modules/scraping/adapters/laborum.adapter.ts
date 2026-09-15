@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { Logger } from '@nestjs/common';
 import type { ScraperAdapter, RawJob } from './base.interface';
 
 const BASE_URL = 'https://www.laborum.cl';
@@ -39,6 +40,7 @@ const JOB_TYPE_MAP: Record<string, string> = {
 export class LaborumAdapter implements ScraperAdapter {
   sourceSlug = 'ip-chile';
   sourceName = 'IP Chile';
+  private readonly logger = new Logger('LaborumAdapter');
 
   async fetchListings(): Promise<RawJob[]> {
     const jobs: RawJob[] = [];
@@ -58,8 +60,8 @@ export class LaborumAdapter implements ScraperAdapter {
         jobs.push(this.mapAviso(aviso));
       }
     } catch (error) {
-      console.error(
-        `[LABORUM] Error al scraping: ${(error as Error).message}`,
+      this.logger.error(
+        `Error al scraping: ${(error as Error).message}`,
       );
     }
 

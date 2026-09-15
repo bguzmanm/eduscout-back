@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { Logger } from '@nestjs/common';
 import * as cheerio from 'cheerio';
 import type { ScraperAdapter, RawJob } from './base.interface';
 import { BROWSER_HEADERS } from './nuxt.parser';
@@ -23,6 +24,7 @@ interface FeedItem {
 export class UsmVraAdapter implements ScraperAdapter {
   sourceSlug = 'usm';
   sourceName = 'Universidad Técnica Federico Santa María';
+  private readonly logger = new Logger('UsmVraAdapter');
 
   async fetchListings(): Promise<RawJob[]> {
     const jobs: RawJob[] = [];
@@ -40,14 +42,14 @@ export class UsmVraAdapter implements ScraperAdapter {
           const job = await this.fetchDetail(item);
           if (job) jobs.push(job);
         } catch (error) {
-          console.error(
-            `[USM-VRA] Error al obtener detalle ${item.link}: ${(error as Error).message}`,
+          this.logger.error(
+            `Error al obtener detalle ${item.link}: ${(error as Error).message}`,
           );
         }
       }
     } catch (error) {
-      console.error(
-        `[USM-VRA] Error al scraping: ${(error as Error).message}`,
+      this.logger.error(
+        `Error al scraping: ${(error as Error).message}`,
       );
     }
 

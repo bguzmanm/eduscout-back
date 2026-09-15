@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { Logger } from '@nestjs/common';
 import * as cheerio from 'cheerio';
 import type { ScraperAdapter, RawJob } from './base.interface';
 
@@ -8,6 +9,7 @@ const PAGE_URL =
 export class UaiAdapter implements ScraperAdapter {
   sourceSlug = 'uai';
   sourceName = 'Universidad Adolfo Ibañez';
+  private readonly logger = new Logger('UaiAdapter');
 
   async fetchListings(): Promise<RawJob[]> {
     const jobs: RawJob[] = [];
@@ -53,8 +55,8 @@ export class UaiAdapter implements ScraperAdapter {
         },
       );
     } catch (error) {
-      console.error(
-        `[UAI] Error al scraping: ${(error as Error).message}`,
+      this.logger.error(
+        `Error al scraping: ${(error as Error).message}`,
       );
     }
 

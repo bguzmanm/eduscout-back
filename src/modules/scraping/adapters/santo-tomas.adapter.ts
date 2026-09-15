@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { Logger } from '@nestjs/common';
 import type { ScraperAdapter, RawJob } from './base.interface';
 import {
   BROWSER_HEADERS,
@@ -30,6 +31,7 @@ interface OfferDetail {
 export class SantoTomasAdapter implements ScraperAdapter {
   sourceSlug = 'santo-tomas';
   sourceName = 'IP Santo Tomás';
+  private readonly logger = new Logger('SantoTomasAdapter');
 
   async fetchListings(): Promise<RawJob[]> {
     const jobs: RawJob[] = [];
@@ -48,14 +50,14 @@ export class SantoTomasAdapter implements ScraperAdapter {
           const job = this.mapDetail(detail);
           if (job) jobs.push(job);
         } catch (error) {
-          console.error(
-            `[SantoTomas] Error al obtener detalle ${card.id}: ${(error as Error).message}`,
+          this.logger.error(
+            `Error al obtener detalle ${card.id}: ${(error as Error).message}`,
           );
         }
       }
     } catch (error) {
-      console.error(
-        `[SantoTomas] Error al scraping: ${(error as Error).message}`,
+      this.logger.error(
+        `Error al scraping: ${(error as Error).message}`,
       );
     }
 

@@ -10,6 +10,7 @@ import { ApiWrappedResponse } from '../../../common/decorators/api-wrapped-respo
 import {
   JobResponseDto,
   JobStatsResponseDto,
+  JobsPageResponseDto,
   SearchJobsDto,
 } from '../dtos/job.dto';
 
@@ -48,10 +49,11 @@ export class JobsController {
   })
   @ApiQuery({ name: 'page', required: false })
   @ApiQuery({ name: 'limit', required: false })
-  @ApiResponse({
-    status: 200,
-    description: 'Lista de ofertas devuelta con éxito.',
-  })
+  @ApiWrappedResponse(
+    JobsPageResponseDto,
+    200,
+    'Lista de ofertas devuelta con éxito.',
+  )
   async findAll(@Query() query: SearchJobsDto) {
     return this.jobsService.findAll(query);
   }

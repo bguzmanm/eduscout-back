@@ -1,4 +1,4 @@
-import { Controller, Post, Query, Get, UseGuards } from '@nestjs/common';
+import { Controller, Post, Query, Get, UseGuards, ParseIntPipe, DefaultValuePipe } from '@nestjs/common';
 import { ScrapingService } from './scraping.service';
 import {
   ApiBearerAuth,
@@ -47,7 +47,14 @@ export class ScrapingController {
     required: false,
     description: 'Cantidad de informes a devolver (máx. 50)',
   })
-  async getRecentReports(@Query('limit') limit?: string) {
-    return this.scrapingService.getRecentReports(limit ? Number(limit) : 10);
+  async getRecentReports(
+    @Query(
+      'limit',
+      new DefaultValuePipe(10),
+      new ParseIntPipe({ errorHttpStatusCode: 400 }),
+    )
+    limit: number,
+  ) {
+    return this.scrapingService.getRecentReports(limit);
   }
 }

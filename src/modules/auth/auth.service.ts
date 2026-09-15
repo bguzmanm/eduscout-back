@@ -3,9 +3,10 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { JwtService } from '@nestjs/jwt';
 import { createHmac, timingSafeEqual } from 'node:crypto';
 
-interface TokenPayload {
+export interface TokenPayload {
   sub: string;
   exp: number;
   role?: 'admin' | 'candidate';
@@ -17,16 +18,35 @@ export interface LoginResult {
   expiresIn: number;
 }
 
+const REQUIRED_PROD_SECRETS = [
+  'ADMIN_PASSWORD',
+  'ADMIN_TOKEN_SECRET',
+  'CANDIDATE_TOKEN_SECRET',
+];
+
 @Injectable()
 export class AuthService {
   private readonly username: string;
   private readonly passwordHash: Buffer;
-  private readonly secret: string;
   private readonly ttlMs: number;
-  private readonly candidateSecret: string;
   private readonly candidateTtlMs: number;
+  private readonly adminJwt: JwtService;
+  private readonly candidateJwt: JwtService;
 
   constructor(private readonly configService: ConfigService) {
+    const nodeEnv = this.configService.get<string>('NODE_ENV', 'development');
+
+    if (nodeEnv === 'production') {
+      const missingSecrets = REQUIRED_PROD_SECRETS.filter(
+        (key) => !this.configService.get<string>(key),
+      );
+      if (missingSecrets.length > 0) {
+        throw new Error(
+          `Faltan variables de entorno obligatorias en producción: ${missingSecrets.join(', ')}`,
+        );
+      }
+    }
+
     this.username = this.configService.get<string>(
       'ADMIN_USERNAME',
       'admin',
@@ -36,20 +56,30 @@ export class AuthService {
       'cambia-esta-password',
     );
     this.passwordHash = createHmac('sha256', password).digest();
-    this.secret = this.configService.get<string>(
-      'ADMIN_TOKEN_SECRET',
-      'dev-token-secret-eduscout-cambiar-en-produccion',
-    );
     this.ttlMs = Number(
       this.configService.get('ADMIN_TOKEN_TTL_MS', '7200000'),
-    );
-    this.candidateSecret = this.configService.get<string>(
-      'CANDIDATE_TOKEN_SECRET',
-      'dev-candidate-secret-eduscout-cambiar-en-produccion',
     );
     this.candidateTtlMs = Number(
       this.configService.get('CANDIDATE_TOKEN_TTL_MS', '604800000'),
     );
+
+    const adminSecret = this.configService.get<string>(
+      'ADMIN_TOKEN_SECRET',
+      'dev-token-secret-eduscout-cambiar-en-produccion',
+    );
+    const candidateSecret = this.configService.get<string>(
+      'CANDIDATE_TOKEN_SECRET',
+      'dev-candidate-secret-eduscout-cambiar-en-produccion',
+    );
+
+    this.adminJwt = new JwtService({
+      secret: adminSecret,
+      signOptions: { expiresIn: Math.floor(this.ttlMs / 1000) },
+    });
+    this.candidateJwt = new JwtService({
+      secret: candidateSecret,
+      signOptions: { expiresIn: Math.floor(this.candidateTtlMs / 1000) },
+    });
   }
 
   login(username: string, password: string): LoginResult {
@@ -67,86 +97,38 @@ export class AuthService {
     }
 
     const now = Date.now();
-    const payload: TokenPayload = {
-      sub: this.username,
-      exp: now + this.ttlMs,
-      role: 'admin',
-    };
+    const token = this.adminJwt.sign({ sub: this.username, role: 'admin' });
 
-    return this.buildLoginResult(payload, this.secret);
+    return {
+      token,
+      expiresAt: new Date(now + this.ttlMs).toISOString(),
+      expiresIn: this.ttlMs,
+    };
   }
 
   issueCandidateToken(candidateId: number): LoginResult {
     const now = Date.now();
-    const payload: TokenPayload = {
+    const token = this.candidateJwt.sign({
       sub: `candidate:${candidateId}`,
-      exp: now + this.candidateTtlMs,
       role: 'candidate',
-    };
-
-    return this.buildLoginResult(payload, this.candidateSecret);
-  }
-
-  verifyToken(token: string): TokenPayload {
-    const [body, signature, extra] = token.split('.');
-    if (!body || !signature || extra !== undefined) {
-      throw new UnauthorizedException('Token inválido');
-    }
-
-    const payload = this.decode(body);
-    const expected = this.signature(body, payload.role === 'candidate' ? this.candidateSecret : this.secret);
-    const signatureBuffer = Buffer.from(signature);
-    const expectedBuffer = Buffer.from(expected);
-    if (
-      signatureBuffer.length !== expectedBuffer.length ||
-      !timingSafeEqual(signatureBuffer, expectedBuffer)
-    ) {
-      throw new UnauthorizedException('Token inválido');
-    }
-
-    if (payload.exp <= Date.now()) {
-      throw new UnauthorizedException('La sesión ha expirado');
-    }
-
-    return payload;
-  }
-
-  private buildLoginResult(
-    payload: TokenPayload,
-    secret: string,
-  ): LoginResult {
-    const body = this.encode(payload);
-    const token = `${body}.${this.signature(body, secret)}`;
+    });
 
     return {
       token,
-      expiresAt: new Date(payload.exp).toISOString(),
-      expiresIn: payload.exp - Date.now(),
+      expiresAt: new Date(now + this.candidateTtlMs).toISOString(),
+      expiresIn: this.candidateTtlMs,
     };
   }
 
-  private sign(payload: TokenPayload, secret: string): string {
-    const body = this.encode(payload);
-    return `${body}.${this.signature(body, secret)}`;
-  }
-
-  private signature(body: string, secret: string): string {
-    return createHmac('sha256', secret).update(body).digest('base64url');
-  }
-
-  private encode(payload: TokenPayload): string {
-    return Buffer.from(JSON.stringify(payload)).toString('base64url');
-  }
-
-  private decode(body: string): TokenPayload {
-    try {
-      const parsed = JSON.parse(Buffer.from(body, 'base64url').toString()) as TokenPayload;
-      if (typeof parsed.sub !== 'string' || typeof parsed.exp !== 'number') {
-        throw new Error('Payload malformado');
+  verifyToken(token: string): TokenPayload {
+    for (const jwt of [this.adminJwt, this.candidateJwt]) {
+      try {
+        const verified = jwt.verify<TokenPayload>(token);
+        return { ...verified, exp: verified.exp * 1000 };
+      } catch {
+        // Continuar con la siguiente clave
       }
-      return parsed;
-    } catch {
-      throw new UnauthorizedException('Token inválido');
     }
+    throw new UnauthorizedException('Token inválido');
   }
 }
