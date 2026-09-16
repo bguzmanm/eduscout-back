@@ -30,8 +30,10 @@ export class RequestLoggerInterceptor implements NestInterceptor {
         error: (error: Error) => {
           const duration = Date.now() - start;
           const err = error as { status?: number };
+          const status = err.status ?? 500;
+          const detail = status >= 500 ? ` - ${error.message}` : '';
           this.logger.error(
-            `${method} ${url} ${err.status ?? 500} ${duration}ms - ${error.message}`,
+            `${method} ${url} ${status} ${duration}ms${detail}`,
           );
         },
       }),

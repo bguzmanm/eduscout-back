@@ -26,12 +26,9 @@ export class CandidateAuthGuard implements CanActivate {
       throw new UnauthorizedException('Se requiere autenticación');
     }
 
-    const payload = this.authService.verifyToken(
+    const payload = this.authService.verifyCandidateToken(
       header.slice('Bearer '.length),
     );
-    if (payload.role !== 'candidate') {
-      throw new UnauthorizedException('Se requiere autenticación de postulante');
-    }
 
     const candidateId = Number(payload.sub.replace('candidate:', ''));
     if (!Number.isInteger(candidateId) || candidateId <= 0) {

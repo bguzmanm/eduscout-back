@@ -13,6 +13,7 @@ import {
   UseInterceptors,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
+import { Throttle } from '@nestjs/throttler';
 import {
   ApiBearerAuth,
   ApiConsumes,
@@ -40,6 +41,7 @@ export class CandidatesController {
   constructor(private readonly candidatesService: CandidatesService) {}
 
   @Post('register')
+  @Throttle({ default: { limit: 10, ttl: 60000 } })
   @ApiOperation({ summary: 'Registrar un postulante y obtener sesión' })
   @ApiResponse({ status: 201, description: 'Postulante registrado con éxito.' })
   @ApiResponse({ status: 409, description: 'El correo ya está registrado.' })
@@ -48,6 +50,7 @@ export class CandidatesController {
   }
 
   @Post('login')
+  @Throttle({ default: { limit: 5, ttl: 60000 } })
   @ApiOperation({ summary: 'Iniciar sesión de postulante' })
   @ApiResponse({ status: 201, description: 'Sesión iniciada con éxito.' })
   @ApiResponse({ status: 401, description: 'Credenciales inválidas.' })

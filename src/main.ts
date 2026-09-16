@@ -20,6 +20,11 @@ async function bootstrap() {
   const connectSrc = isProduction
     ? ["'self'"]
     : ["'self'", 'http://localhost:3000', 'http://localhost:3001'];
+  const scriptSrc = isProduction
+    ? ["'self'"]
+    : ["'self'", "'unsafe-inline'"];
+
+  app.getHttpAdapter().getInstance().enable('trust proxy');
 
   app.use(
     helmet({
@@ -27,7 +32,7 @@ async function bootstrap() {
       contentSecurityPolicy: {
         directives: {
           defaultSrc: ["'self'"],
-          scriptSrc: ["'self'", "'unsafe-inline'"],
+          scriptSrc,
           styleSrc: ["'self'", "'unsafe-inline'"],
           imgSrc: ["'self'", 'data:'],
           connectSrc,
@@ -65,20 +70,22 @@ async function bootstrap() {
 
   app.enableShutdownHooks();
 
-  const config = new DocumentBuilder()
-    .setTitle('EduScout API')
-    .setDescription(
-      'API de EduScout para gestionar ofertas de trabajo académicas',
-    )
-    .setVersion('1.0')
-    .addTag('sources')
-    .addTag('jobs')
-    .addTag('scraping')
-    .addTag('auth')
-    .addBearerAuth()
-    .build();
-  const documentFactory = () => SwaggerModule.createDocument(app, config);
-  SwaggerModule.setup('api', app, documentFactory);
+  if (!isProduction) {
+    const config = new DocumentBuilder()
+      .setTitle('EduScout API')
+      .setDescription(
+        'API de EduScout para gestionar ofertas de trabajo académicas',
+      )
+      .setVersion('1.0')
+      .addTag('sources')
+      .addTag('jobs')
+      .addTag('scraping')
+      .addTag('auth')
+      .addBearerAuth()
+      .build();
+    const documentFactory = () => SwaggerModule.createDocument(app, config);
+    SwaggerModule.setup('api', app, documentFactory);
+  }
 
   const port = configService.get<number>('PORT', 3001);
   await app.listen(port);

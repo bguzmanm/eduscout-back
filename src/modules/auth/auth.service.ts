@@ -5,6 +5,7 @@ import {
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { createHmac, timingSafeEqual } from 'node:crypto';
+import { hashPassword, verifyPassword } from '../../common/utils/password';
 
 export interface TokenPayload {
   sub: string;
@@ -27,7 +28,7 @@ const REQUIRED_PROD_SECRETS = [
 @Injectable()
 export class AuthService {
   private readonly username: string;
-  private readonly passwordHash: Buffer;
+  private readonly passwordHash: string;
   private readonly ttlMs: number;
   private readonly candidateTtlMs: number;
   private readonly adminJwt: JwtService;
@@ -55,7 +56,7 @@ export class AuthService {
       'ADMIN_PASSWORD',
       'cambia-esta-password',
     );
-    this.passwordHash = createHmac('sha256', password).digest();
+    this.passwordHash = hashPassword(password);
     this.ttlMs = Number(
       this.configService.get('ADMIN_TOKEN_TTL_MS', '7200000'),
     );
@@ -87,10 +88,7 @@ export class AuthService {
       createHmac('sha256', username).digest(),
       createHmac('sha256', this.username).digest(),
     );
-    const passwordMatches = timingSafeEqual(
-      createHmac('sha256', password).digest(),
-      this.passwordHash,
-    );
+    const passwordMatches = verifyPassword(password, this.passwordHash);
 
     if (!usernameMatches || !passwordMatches) {
       throw new UnauthorizedException('Credenciales inválidas');
@@ -120,15 +118,25 @@ export class AuthService {
     };
   }
 
-  verifyToken(token: string): TokenPayload {
-    for (const jwt of [this.adminJwt, this.candidateJwt]) {
-      try {
-        const verified = jwt.verify<TokenPayload>(token);
-        return { ...verified, exp: verified.exp * 1000 };
-      } catch {
-        // Continuar con la siguiente clave
+  verifyAdminToken(token: string): TokenPayload {
+    try {
+      const verified = this.adminJwt.verify<TokenPayload>(token);
+      if (verified.role !== 'admin') {
+        throw new UnauthorizedException('Token no autorizado para admin');
       }
+      return { ...verified, exp: verified.exp * 1000 };
+    } catch (error) {
+      if (error instanceof UnauthorizedException) throw error;
+      throw new UnauthorizedException('Token admin inválido');
     }
-    throw new UnauthorizedException('Token inválido');
+  }
+
+  verifyCandidateToken(token: string): TokenPayload {
+    try {
+      const verified = this.candidateJwt.verify<TokenPayload>(token);
+      return { ...verified, exp: verified.exp * 1000 };
+    } catch {
+      throw new UnauthorizedException('Token de candidato inválido');
+    }
   }
 }
