@@ -20,7 +20,7 @@ export class CandidatesService {
     const existing = await this.candidatesRepository.findByEmail(email);
     if (existing) {
       throw new ConflictException(
-        'Ya existe un postulante con ese correo electrónico',
+        'No se pudo completar el registro. Verifica tus datos e inténtalo nuevamente.',
       );
     }
 

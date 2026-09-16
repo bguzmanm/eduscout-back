@@ -15,13 +15,13 @@ function makeConfig(overrides: Record<string, string> = {}) {
 }
 
 describe('AuthService', () => {
-  it('inicia sesión con credenciales correctas y devuelve un token admin', async () => {
+  it('inicia sesión con credenciales correctas y devuelve un token admin', () => {
     const service = new AuthService(makeConfig());
     const result = service.login('admin', 'clave-segura');
 
     expect(result.token).toBeTruthy();
     expect(result.expiresIn).toBe(7200000);
-    const payload = service.verifyToken(result.token);
+    const payload = service.verifyAdminToken(result.token);
     expect(payload.sub).toBe('admin');
     expect(payload.role).toBe('admin');
   });
@@ -36,25 +36,41 @@ describe('AuthService', () => {
     const service = new AuthService(makeConfig());
     const result = service.issueCandidateToken(42);
 
-    const payload = service.verifyToken(result.token);
+    const payload = service.verifyCandidateToken(result.token);
     expect(payload.sub).toBe('candidate:42');
     expect(payload.role).toBe('candidate');
   });
 
-  it('rechaza un token firmado con un secreto distinto', () => {
+  it('rechaza un token admin verificado con la clave equivocada', () => {
     const service = new AuthService(makeConfig());
     const result = service.login('admin', 'clave-segura');
 
     const other = new AuthService(
       makeConfig({ ADMIN_TOKEN_SECRET: 'otro-secreto' }),
     );
-    expect(() => other.verifyToken(result.token)).toThrow();
+    expect(() => other.verifyAdminToken(result.token)).toThrow();
   });
 
-  it('rechaza un token corrupto', () => {
+  it('rechaza un token de candidato verificado con la clave de admin', () => {
     const service = new AuthService(makeConfig());
-    expect(() => service.verifyToken('codigo.invalido')).toThrow();
-    expect(() => service.verifyToken('')).toThrow();
+    const result = service.issueCandidateToken(42);
+
+    expect(() => service.verifyAdminToken(result.token)).toThrow();
+  });
+
+  it('rechaza un token admin verificado como candidato', () => {
+    const service = new AuthService(makeConfig());
+    const result = service.login('admin', 'clave-segura');
+
+    expect(() => service.verifyCandidateToken(result.token)).toThrow();
+  });
+
+  it('rechaza tokens corruptos en ambos métodos', () => {
+    const service = new AuthService(makeConfig());
+    expect(() => service.verifyAdminToken('codigo.invalido')).toThrow();
+    expect(() => service.verifyAdminToken('')).toThrow();
+    expect(() => service.verifyCandidateToken('codigo.invalido')).toThrow();
+    expect(() => service.verifyCandidateToken('')).toThrow();
   });
 
   it('lanza en producción si faltan secrets obligatorios', () => {
