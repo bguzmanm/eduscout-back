@@ -9,6 +9,7 @@ import { ScrapingModule } from './modules/scraping/scraping.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { CandidatesModule } from './modules/candidates/candidates.module';
 import { AlertsModule } from './modules/alerts/alerts.module';
+import { AdminModule } from './modules/admin/admin.module';
 
 @Module({
   imports: [
@@ -21,6 +22,7 @@ import { AlertsModule } from './modules/alerts/alerts.module';
     ScrapingModule,
     CandidatesModule,
     AlertsModule,
+    AdminModule,
   ],
   providers: [
     {
