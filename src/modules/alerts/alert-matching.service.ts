@@ -63,6 +63,28 @@ export class AlertMatchingService {
     return totalMatches;
   }
 
+  async matchAlert(alert: AlertForMatch): Promise<number> {
+    const jobs = await this.alertsRepository.findAllActiveJobs();
+    if (jobs.length === 0) return 0;
+
+    const jobIds = jobs
+      .filter((job) => this.matches(alert, job))
+      .map((job) => job.id);
+
+    if (jobIds.length === 0) return 0;
+
+    return this.alertsRepository.insertMatches(alert.id, jobIds);
+  }
+
+  async replaceAlertMatches(alert: AlertForMatch): Promise<number> {
+    const jobs = await this.alertsRepository.findAllActiveJobs();
+    const jobIds = jobs
+      .filter((job) => this.matches(alert, job))
+      .map((job) => job.id);
+
+    return this.alertsRepository.replaceMatches(alert.id, jobIds);
+  }
+
   private matches(alert: AlertForMatch, job: JobForMatch): boolean {
     if (alert.keywords.length > 0) {
       const haystack = normalizeMatchText(

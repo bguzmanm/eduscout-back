@@ -1,12 +1,18 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { AlertsRepository } from './alerts.repository';
+import { AlertMatchingService } from './alert-matching.service';
 
 @Injectable()
 export class AlertsService {
-  constructor(private readonly alertsRepository: AlertsRepository) {}
+  constructor(
+    private readonly alertsRepository: AlertsRepository,
+    private readonly alertMatchingService: AlertMatchingService,
+  ) {}
 
   async create(candidateId: number, dto: AlertCreateInput) {
-    return this.alertsRepository.create(candidateId, dto);
+    const alert = await this.alertsRepository.create(candidateId, dto);
+    const matchCount = await this.alertMatchingService.matchAlert(alert);
+    return { ...alert, matchCount };
   }
 
   async findAll(candidateId: number) {
@@ -18,7 +24,11 @@ export class AlertsService {
   }
 
   async update(alertId: number, candidateId: number, dto: AlertUpdateInput) {
-    return this.alertsRepository.update(alertId, candidateId, dto);
+    const updated = await this.alertsRepository.update(alertId, candidateId, dto);
+    if (updated.isActive) {
+      await this.alertMatchingService.replaceAlertMatches(updated);
+    }
+    return this.alertsRepository.findForCandidate(alertId, candidateId);
   }
 
   async remove(alertId: number, candidateId: number) {

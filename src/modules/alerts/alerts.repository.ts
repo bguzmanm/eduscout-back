@@ -157,6 +157,35 @@ export class AlertsRepository {
     });
   }
 
+  async findAllActiveJobs() {
+    return this.db.query.jobs.findMany({
+      where: eq(schema.jobs.isActive, true),
+      with: { source: true },
+      orderBy: (j, { asc }) => [asc(j.id)],
+    });
+  }
+
+  async replaceMatches(
+    alertId: number,
+    jobIds: number[],
+  ): Promise<number> {
+    return this.db.transaction(async (tx) => {
+      await tx
+        .delete(schema.alertMatches)
+        .where(eq(schema.alertMatches.alertId, alertId));
+
+      if (jobIds.length === 0) return 0;
+
+      const inserted = await tx
+        .insert(schema.alertMatches)
+        .values(jobIds.map((jobId) => ({ alertId, jobId })))
+        .onConflictDoNothing()
+        .returning();
+
+      return inserted.length;
+    });
+  }
+
   async insertMatches(
     alertId: number,
     jobIds: number[],
