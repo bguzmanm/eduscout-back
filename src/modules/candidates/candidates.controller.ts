@@ -50,7 +50,7 @@ export class CandidatesController {
   }
 
   @Post('login')
-  @Throttle({ default: { limit: 5, ttl: 60000 } })
+  @Throttle({ default: { limit: 10, ttl: 60000 } })
   @ApiOperation({ summary: 'Iniciar sesión de postulante' })
   @ApiResponse({ status: 201, description: 'Sesión iniciada con éxito.' })
   @ApiResponse({ status: 401, description: 'Credenciales inválidas.' })

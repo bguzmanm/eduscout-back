@@ -16,7 +16,7 @@ export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
   @Post('login')
-  @Throttle({ default: { limit: 5, ttl: 60000 } })
+  @Throttle({ default: { limit: 10, ttl: 60000 } })
   @HttpCode(200)
   @ApiOperation({ summary: 'Autenticar administrador y obtener token' })
   @ApiWrappedResponse(LoginResponseDto, 200, 'Sesión iniciada con éxito.')
