@@ -5,6 +5,7 @@ import nodemailer, { Transporter } from 'nodemailer';
 export interface MailMessage {
   to: string;
   subject: string;
+  text?: string;
   html: string;
 }
 
@@ -40,7 +41,12 @@ export class MailerService {
 
   async sendMail(message: MailMessage): Promise<boolean> {
     if (!this.transporter) {
-      const plainText = message.html.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+      const plainText =
+        message.text ??
+        message.html
+          .replace(/<[^>]+>/g, ' ')
+          .replace(/\s+/g, ' ')
+          .trim();
       this.logger.log(
         `[DEV] Correo para ${message.to}: "${message.subject}"\n${plainText}`,
       );
@@ -55,6 +61,7 @@ export class MailerService {
         ),
         to: message.to,
         subject: message.subject,
+        text: message.text,
         html: message.html,
       });
       return true;
