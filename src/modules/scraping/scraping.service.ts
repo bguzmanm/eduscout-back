@@ -21,6 +21,7 @@ import { sources, scrapingRuns, type ScrapingRunSource } from '../../db/schema';
 import * as schema from '../../db/schema';
 import { TelegramService, type ScrapingRunReport } from './telegram.service';
 import { AlertMatchingService } from '../alerts/alert-matching.service';
+import { AlertNotifierService } from '../alerts/alert-notifier.service';
 
 export interface SourceScrapeResult {
   count: number;
@@ -52,6 +53,7 @@ export class ScrapingService {
     private readonly jobsRepository: JobsRepository,
     private readonly telegramService: TelegramService,
     private readonly alertMatchingService: AlertMatchingService,
+    private readonly alertNotifierService: AlertNotifierService,
 @Inject(DRIZZLE_PROVIDER)
   private readonly db: PostgresJsDatabase<typeof schema>,
   ) {}
@@ -160,6 +162,7 @@ export class ScrapingService {
       await this.telegramService.sendReport(report);
 
       await this.matchAlertsForRun(startedAt);
+      await this.notifyAlertsForRun();
 
       const totalScraped = totalNew + totalUpdated;
       this.logger.log(
@@ -212,6 +215,7 @@ export class ScrapingService {
       };
       await this.telegramService.sendReport(report);
       await this.matchAlertsForRun(startedAt);
+      await this.notifyAlertsForRun();
 
       return {
         totalScraped: totalNew + totalUpdated,
@@ -235,6 +239,21 @@ export class ScrapingService {
     } catch (error) {
       this.logger.error(
         `No se pudieron evaluar las alertas para este run: ${(error as Error).message}`,
+      );
+    }
+  }
+
+  private async notifyAlertsForRun(): Promise<void> {
+    try {
+      const sent = await this.alertNotifierService.notifyUnnotified();
+      if (sent > 0) {
+        this.logger.log(
+          `Alertas: ${sent} notificaciones por correo enviadas`,
+        );
+      }
+    } catch (error) {
+      this.logger.error(
+        `No se pudieron enviar las notificaciones de alertas: ${(error as Error).message}`,
       );
     }
   }

@@ -1,5 +1,5 @@
 import { Inject, Injectable, NotFoundException } from '@nestjs/common';
-import { and, count, eq, gte, inArray } from 'drizzle-orm';
+import { and, count, eq, gte, inArray, isNull } from 'drizzle-orm';
 import { PostgresJsDatabase } from 'drizzle-orm/postgres-js';
 import { DRIZZLE_PROVIDER } from '../database/database.module';
 import * as schema from '../../db/schema';
@@ -178,7 +178,7 @@ export class AlertsRepository {
 
       const inserted = await tx
         .insert(schema.alertMatches)
-        .values(jobIds.map((jobId) => ({ alertId, jobId })))
+        .values(jobIds.map((jobId) => ({ alertId, jobId, notifiedAt: new Date() })))
         .onConflictDoNothing()
         .returning();
 
@@ -199,5 +199,33 @@ export class AlertsRepository {
       .returning();
 
     return inserted.length;
+  }
+
+  async markNotifiedByAlert(alertId: number): Promise<void> {
+    await this.db
+      .update(schema.alertMatches)
+      .set({ notifiedAt: new Date() })
+      .where(eq(schema.alertMatches.alertId, alertId));
+  }
+
+  async findUnnotifiedMatches() {
+    const matches = await this.db.query.alertMatches.findMany({
+      where: isNull(schema.alertMatches.notifiedAt),
+      with: {
+        alert: { with: { candidate: true } },
+        job: { with: { source: true } },
+      },
+      orderBy: (m, { asc }) => [asc(m.matchedAt)],
+    });
+
+    return matches.filter((m) => m.alert.isActive);
+  }
+
+  async markNotified(matchIds: number[]): Promise<void> {
+    if (matchIds.length === 0) return;
+    await this.db
+      .update(schema.alertMatches)
+      .set({ notifiedAt: new Date() })
+      .where(inArray(schema.alertMatches.id, matchIds));
   }
 }

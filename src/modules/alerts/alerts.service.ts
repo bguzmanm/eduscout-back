@@ -12,6 +12,7 @@ export class AlertsService {
   async create(candidateId: number, dto: AlertCreateInput) {
     const alert = await this.alertsRepository.create(candidateId, dto);
     const matchCount = await this.alertMatchingService.matchAlert(alert);
+    await this.alertsRepository.markNotifiedByAlert(alert.id);
     return { ...alert, matchCount };
   }
 

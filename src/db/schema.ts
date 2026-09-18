@@ -151,6 +151,7 @@ export const alertMatches = pgTable(
       .references(() => jobs.id, { onDelete: 'cascade' })
       .notNull(),
     matchedAt: timestamp('matched_at').defaultNow().notNull(),
+    notifiedAt: timestamp('notified_at'),
   },
   (t) => [unique('alert_matches_alert_job_unique').on(t.alertId, t.jobId)],
 );

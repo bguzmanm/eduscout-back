@@ -1,0 +1,1 @@
+ALTER TABLE "alert_matches" ADD COLUMN "notified_at" timestamp;--> statement-breakpoint
