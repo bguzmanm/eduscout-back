@@ -12,7 +12,7 @@ export class ScrapingScheduler {
     private readonly configService: ConfigService,
   ) {}
 
-  @Cron('0 6 * * *')
+  @Cron('0 6 * * *', { timeZone: 'America/Santiago' })
   async handleCron() {
     if (
       this.configService.get<string>('SCRAPING_CRON_ENABLED', 'true') === 'false'
