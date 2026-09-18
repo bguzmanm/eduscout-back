@@ -15,6 +15,7 @@ import { UaiAdapter } from './adapters/uai.adapter';
 import { LaborumAdapter } from './adapters/laborum.adapter';
 import { SantoTomasAdapter } from './adapters/santo-tomas.adapter';
 import { IplacexAdapter } from './adapters/iplacex.adapter';
+import { GetOnBoardAdapter } from './adapters/getonboard.adapter';
 import { UsmVraAdapter } from './adapters/usm-vra.adapter';
 import { UvCargosAdapter } from './adapters/uv-cargos.adapter';
 import { sources, scrapingRuns, type ScrapingRunSource } from '../../db/schema';
@@ -74,6 +75,8 @@ export class ScrapingService {
         return new IplacexAdapter();
       case 'trabajando_cl':
         return new TrabajandoClAdapter(slug, name);
+      case 'getonboard':
+        return new GetOnBoardAdapter(slug, name);
       case 'html':
         return new UaiAdapter();
       case 'laborum':

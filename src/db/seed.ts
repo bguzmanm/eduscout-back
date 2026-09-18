@@ -70,8 +70,8 @@ export async function seedDatabase(db: DrizzleConnection) {
           {
             name: 'Duoc UC',
             slug: 'duoc',
-            baseUrl: 'https://duoc.trabajando.cl',
-            scraperType: 'trabajando_cl',
+            baseUrl: 'https://www.getonbrd.com/',
+            scraperType: 'getonboard',
             category: 'instituto_profesional',
             logoUrl:
               'https://staticcdn.trabajando.cl/portal-comunidad/66f4222629ff84227c039f4a/assets/logo.png',
