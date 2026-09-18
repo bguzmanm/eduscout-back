@@ -2,7 +2,10 @@ import { describe, expect, it } from 'bun:test';
 import { AdminService } from './admin.service';
 import type { AdminRepository, CandidateStatsRaw } from './admin.repository';
 
-function makeRepository(overrides: Partial<CandidateStatsRaw> = {}): AdminRepository {
+function makeRepository(
+  overrides: Partial<CandidateStatsRaw> = {},
+  listCandidates?: AdminRepository['listCandidates'],
+): AdminRepository {
   return {
     getCandidateStats: async () => ({
       totalCandidates: 16,
@@ -21,6 +24,7 @@ function makeRepository(overrides: Partial<CandidateStatsRaw> = {}): AdminReposi
       ],
       ...overrides,
     }),
+    listCandidates,
   } as AdminRepository;
 }
 
@@ -77,5 +81,46 @@ describe('AdminService', () => {
 
     expect(stats.avgAlertsPerCandidate).toBe(2.5);
     expect(stats.candidatesWithAlerts).toBe(2);
+  });
+
+  it('delega el listado de postulantes al repositorio con los filtros', async () => {
+    const paged = {
+      items: [
+        {
+          id: 1,
+          name: 'María Fernanda Rojas',
+          email: 'maria@mail.com',
+          phone: null,
+          cvFileName: 'cv.pdf',
+          cvStatus: 'pending',
+          cvUploadedAt: '2026-09-15T10:00:00.000Z',
+          alertCount: 2,
+          activeAlertCount: 1,
+          matchCount: 5,
+          createdAt: '2026-09-10T20:15:00.000Z',
+          updatedAt: '2026-09-15T10:00:00.000Z',
+        },
+      ],
+      meta: { page: 1, limit: 20, total: 1, totalPages: 1 },
+    };
+    const repo = makeRepository(
+      {},
+      async (filters, page, limit) => {
+        expect(filters).toEqual({ q: 'maría', hasCv: true });
+        expect(page).toBe(2);
+        expect(limit).toBe(10);
+        return paged;
+      },
+    );
+    const service = new AdminService(repo);
+
+    const result = await service.listCandidates({
+      q: 'maría',
+      hasCv: true,
+      page: 2,
+      limit: 10,
+    } as never);
+
+    expect(result).toEqual(paged);
   });
 });

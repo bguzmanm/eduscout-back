@@ -1,6 +1,9 @@
 import { Injectable } from '@nestjs/common';
 import { AdminRepository } from './admin.repository';
-import { CandidateStatsDto } from './dtos/admin.dto';
+import {
+  CandidateStatsDto,
+  ListAdminCandidatesDto,
+} from './dtos/admin.dto';
 
 @Injectable()
 export class AdminService {
@@ -41,5 +44,13 @@ export class AdminService {
         manyAlerts,
       },
     };
+  }
+
+  async listCandidates(query: ListAdminCandidatesDto) {
+    return this.adminRepository.listCandidates(
+      { q: query.q, hasCv: query.hasCv },
+      query.page,
+      query.limit,
+    );
   }
 }

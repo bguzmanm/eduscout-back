@@ -1,4 +1,120 @@
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiProperty, ApiExtraModels, getSchemaPath } from '@nestjs/swagger';
+import { IsOptional, IsBoolean, IsString } from 'class-validator';
+import { Transform } from 'class-transformer';
+import { PaginationDto } from '../../../common/dto/pagination.dto';
+import type { PaginationMeta } from '../../../common/types';
+
+export class ListAdminCandidatesDto extends PaginationDto {
+  @ApiProperty({
+    required: false,
+    description: 'Término para filtrar por nombre o correo del postulante',
+    example: 'maría',
+  })
+  @IsOptional()
+  @IsString()
+  q?: string;
+
+  @ApiProperty({
+    required: false,
+    description: 'Filtra por presencia de CV (true = con CV, false = sin CV)',
+    example: true,
+  })
+  @IsOptional()
+  @Transform(({ value }) => value === 'true' || value === true)
+  @IsBoolean()
+  hasCv?: boolean;
+}
+
+export class AdminCandidateDto {
+  @ApiProperty({
+    description: 'Identificador del postulante',
+    example: 1,
+  })
+  id: number;
+
+  @ApiProperty({
+    description: 'Nombre del postulante',
+    example: 'María Fernanda Rojas',
+  })
+  name: string;
+
+  @ApiProperty({
+    description: 'Correo del postulante',
+    example: 'maria@mail.com',
+  })
+  email: string;
+
+  @ApiProperty({
+    description: 'Teléfono del postulante',
+    example: '+56912345678',
+    nullable: true,
+  })
+  phone: string | null;
+
+  @ApiProperty({
+    description: 'Nombre del archivo de CV',
+    nullable: true,
+  })
+  cvFileName: string | null;
+
+  @ApiProperty({
+    description: 'Estado del CV (pending/approved/rejected)',
+    example: 'pending',
+  })
+  cvStatus: string;
+
+  @ApiProperty({
+    description: 'Fecha de subida del CV',
+    nullable: true,
+  })
+  cvUploadedAt: string | null;
+
+  @ApiProperty({
+    description: 'Total de alertas creadas por el postulante',
+    example: 2,
+  })
+  alertCount: number;
+
+  @ApiProperty({
+    description: 'Alertas activas del postulante',
+    example: 1,
+  })
+  activeAlertCount: number;
+
+  @ApiProperty({
+    description: 'Coincidencias generadas por las alertas del postulante',
+    example: 12,
+  })
+  matchCount: number;
+
+  @ApiProperty({
+    description: 'Fecha y hora de registro',
+    example: '2026-09-10T20:15:00.000Z',
+  })
+  createdAt: string;
+
+  @ApiProperty({
+    description: 'Última actualización del perfil',
+    example: '2026-09-15T10:00:00.000Z',
+  })
+  updatedAt: string;
+}
+
+@ApiExtraModels(AdminCandidateDto)
+export class AdminCandidatesPageResponseDto {
+  @ApiProperty({
+    description: 'Postulantes de la página',
+    type: 'array',
+    items: { $ref: getSchemaPath(AdminCandidateDto) },
+  })
+  items: AdminCandidateDto[];
+
+  @ApiProperty({
+    description: 'Metadatos de paginación',
+    example: { page: 1, limit: 20, total: 42, totalPages: 3 },
+  })
+  meta: PaginationMeta;
+}
 
 export class AlertsDistributionDto {
   @ApiProperty({
