@@ -115,22 +115,22 @@ export class CandidatesService {
     const resetUrl = `${frontendUrl.replace(/\/$/, '')}/recuperar?token=${resetToken}`;
     const html = `<p>Hola ${candidate.name},</p>
 <p>Recibimos una solicitud para restablecer la contraseña de tu cuenta en <strong>EduScout</strong>, el buscador chileno de cargos docentes y concursos académicos.</p>
-<p>Para crear una contraseña nueva, accede a este enlace <strong>(válido por 60 minutos)</strong>:</p>
+<p>Este enlace permite crear una contraseña nueva <strong>(válido por 60 minutos)</strong>:</p>
 <p><a href="${resetUrl}">Restablecer mi contraseña</a></p>
 <p>Si el botón no funciona, copia y pega esta dirección en tu navegador:</p>
 <p>${resetUrl}</p>
-<p>Si no solicitaste este cambio, puedes ignorar este correo: tu contraseña seguirá siendo la misma.</p>
+<p>Si no has solicitado este cambio, no es necesario hacer nada: tu contraseña seguirá siendo la misma.</p>
 <p>¿Dudas? Escríbenos a <a href="mailto:no-reply@eduscout.cl">no-reply@eduscout.cl</a>.</p>
 <p>— Equipo EduScout · eduscout.cl</p>`;
     const text = `Hola ${candidate.name},
 
 Recibimos una solicitud para restablecer la contraseña de tu cuenta en EduScout, el buscador chileno de cargos docentes y concursos académicos.
 
-Para crear una contraseña nueva, abre este enlace (válido por 60 minutos):
+Este enlace permite crear una contraseña nueva (válido por 60 minutos):
 
 ${resetUrl}
 
-Si no solicitaste este cambio, puedes ignorar este correo: tu contraseña seguirá siendo la misma.
+Si no has solicitado este cambio, no es necesario hacer nada: tu contraseña seguirá siendo la misma.
 
 ¿Dudas? Escríbenos a no-reply@eduscout.cl.
 
