@@ -113,6 +113,15 @@ export async function seedDatabase(db: DrizzleConnection) {
               'https://staticcdn.trabajando.cl/portal-comunidad/66f4222629ff84227c039e45/assets/logo.png',
           },
           {
+            name: 'UNIACC',
+            slug: 'uniacc',
+            baseUrl: 'https://uniacc.hiringroom.com/jobs',
+            scraperType: 'hiringroom',
+            category: 'universidad_privada',
+            logoUrl:
+              'https://uniacc.hiringroom.com/data/accounts/uniacc/microsite/0efd03c1b971c6f3141bf2dc400ddc3f.png',
+          },
+          {
             name: 'Universidad de Concepción',
             slug: 'udec',
             baseUrl: 'https://udec.trabajando.cl/trabajo-empleo/',
@@ -140,7 +149,7 @@ export async function seedDatabase(db: DrizzleConnection) {
           },
         ])
         .returning();
-      console.log('✅ 13 fuentes creadas');
+      console.log('✅ 14 fuentes creadas');
     });
 
     console.log('✨ Seeding completado exitosamente');

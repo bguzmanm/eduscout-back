@@ -18,6 +18,7 @@ import { IplacexAdapter } from './adapters/iplacex.adapter';
 import { GetOnBoardAdapter } from './adapters/getonboard.adapter';
 import { UsmVraAdapter } from './adapters/usm-vra.adapter';
 import { UvCargosAdapter } from './adapters/uv-cargos.adapter';
+import { HiringRoomAdapter } from './adapters/hiringroom.adapter';
 import { sources, scrapingRuns, type ScrapingRunSource } from '../../db/schema';
 import * as schema from '../../db/schema';
 import { TelegramService, type ScrapingRunReport } from './telegram.service';
@@ -85,6 +86,8 @@ export class ScrapingService {
         return new UsmVraAdapter();
       case 'uv_cargos':
         return new UvCargosAdapter();
+      case 'hiringroom':
+        return new HiringRoomAdapter();
       default:
         this.logger.warn(`Tipo de scraper desconocido: ${scraperType}`);
         return null;

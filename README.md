@@ -32,7 +32,7 @@ bun run docker:up
 bun run db:generate
 bun run db:migrate
 
-# 5. Sembrar fuentes iniciales (8 universidades)
+# 5. Sembrar fuentes iniciales (9 universidades)
 bun run db:seed
 
 # 6. Iniciar servidor en modo desarrollo
