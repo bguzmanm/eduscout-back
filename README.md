@@ -164,7 +164,7 @@ EduScout scraping 5 tipos de sitios web mediante adaptadores especializados:
 |-----------|------|---------|---------|
 | `UchileAdapter` | `uchile_api` | Axios + API REST | U. de Chile |
 | `UcAdapter` | `wordpress` | Axios + Cheerio (HTML) | UC, IP Santo Tomás |
-| `TrabajandoClAdapter` | `trabajando_cl` | Axios + parsing `__NUXT_DATA__` | UNAB, INACAP, Duoc |
+| `TrabajandoClAdapter` | `trabajando_cl` | Axios + parsing `__NUXT_DATA__` | UNAB, INACAP, Duoc, UDLA |
 | `UaiAdapter` | `html` | Axios + Cheerio (HTML) | UAI |
 | `LaborumAdapter` | `laborum` | Playwright (headless Chromium) | IP Chile |
 

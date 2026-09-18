@@ -104,6 +104,15 @@ export async function seedDatabase(db: DrizzleConnection) {
               logoUrl: 'https://thumb.wikimedia.org/wikipedia/commons/thumb/9/9d/Logo_Iplacex.svg/960px-Logo_Iplacex.svg.png?utm_source=es.wikipedia.org&utm_campaign=index&utm_content=thumbnail',
           },
           {
+            name: 'Universidad de Las Américas',
+            slug: 'udla',
+            baseUrl: 'https://udla.trabajando.cl',
+            scraperType: 'trabajando_cl',
+            category: 'universidad_privada',
+            logoUrl:
+              'https://staticcdn.trabajando.cl/portal-comunidad/66f4222629ff84227c039e45/assets/logo.png',
+          },
+          {
             name: 'Universidad de Concepción',
             slug: 'udec',
             baseUrl: 'https://udec.trabajando.cl/trabajo-empleo/',
@@ -131,7 +140,7 @@ export async function seedDatabase(db: DrizzleConnection) {
           },
         ])
         .returning();
-      console.log('✅ 12 fuentes creadas');
+      console.log('✅ 13 fuentes creadas');
     });
 
     console.log('✨ Seeding completado exitosamente');
