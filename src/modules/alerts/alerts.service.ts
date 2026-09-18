@@ -40,7 +40,30 @@ export class AlertsService {
   }
 
   async findMatches(alertId: number, candidateId: number) {
-    return this.alertsRepository.findMatches(alertId, candidateId);
+    const matches = await this.alertsRepository.findMatches(alertId, candidateId);
+    return matches.map((match) => {
+      const job = match.job as unknown as
+        | (Record<string, unknown> & {
+            source?: {
+              name?: string;
+              slug?: string;
+              logoUrl?: string | null;
+            } | null;
+          })
+        | null
+        | undefined;
+      return {
+        ...match,
+        job: job
+          ? {
+              ...job,
+              sourceName: job.source?.name ?? 'Desconocida',
+              sourceSlug: job.source?.slug ?? 'desconocido',
+              sourceLogoUrl: job.source?.logoUrl ?? null,
+            }
+          : null,
+      };
+    });
   }
 }
 
