@@ -32,6 +32,14 @@ export class CandidatesRepository {
     });
   }
 
+  async findByResetTokenHash(
+    resetTokenHash: string,
+  ): Promise<CandidateRow | undefined> {
+    return this.db.query.candidates.findFirst({
+      where: eq(schema.candidates.resetTokenHash, resetTokenHash),
+    });
+  }
+
   async create(data: {
     name: string;
     email: string;

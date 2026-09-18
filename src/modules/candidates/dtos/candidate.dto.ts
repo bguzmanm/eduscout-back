@@ -1,5 +1,6 @@
 import {
   IsEmail,
+  IsNotEmpty,
   IsOptional,
   IsString,
   Matches,
@@ -53,6 +54,43 @@ export class UpdateCandidateDto {
   @IsString()
   @MaxLength(50)
   phone?: string;
+}
+
+export class ChangePasswordCandidateDto {
+  @ApiProperty({ description: 'Contraseña actual' })
+  @IsString()
+  @MinLength(1)
+  @MaxLength(100)
+  currentPassword: string;
+
+  @ApiProperty({ description: 'Nueva contraseña' })
+  @IsString()
+  @MinLength(8)
+  @MaxLength(100)
+  @Matches(/[A-Za-z]/, { message: 'La contraseña debe incluir letras' })
+  newPassword: string;
+}
+
+export class RequestPasswordResetDto {
+  @ApiProperty({ description: 'Correo electrónico del postulante' })
+  @IsEmail()
+  @MaxLength(255)
+  email: string;
+}
+
+export class ResetPasswordDto {
+  @ApiProperty({ description: 'Token de recuperación recibido por correo' })
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(255)
+  token: string;
+
+  @ApiProperty({ description: 'Nueva contraseña' })
+  @IsString()
+  @MinLength(8)
+  @MaxLength(100)
+  @Matches(/[A-Za-z]/, { message: 'La contraseña debe incluir letras' })
+  newPassword: string;
 }
 
 export class CandidateProfileDto {

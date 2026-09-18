@@ -80,20 +80,37 @@ describe('AuthService', () => {
   });
 
   it('lanza error con la lista de secrets faltantes en producción', () => {
+    const secretKeys = [
+      'ADMIN_PASSWORD',
+      'ADMIN_TOKEN_SECRET',
+      'CANDIDATE_TOKEN_SECRET',
+    ];
+    const savedValues = secretKeys.map((key) => [key, process.env[key]] as const);
+    secretKeys.forEach((key) => delete process.env[key]);
+
     let thrown: Error | undefined;
     try {
       new AuthService(
         new ConfigService({
           NODE_ENV: 'production',
           ADMIN_USERNAME: 'admin',
-          ADMIN_PASSWORD: 'clave',
         }),
       );
     } catch (error) {
       thrown = error as Error;
+    } finally {
+      savedValues.forEach(([key, value]) => {
+        if (value === undefined) {
+          delete process.env[key];
+        } else {
+          process.env[key] = value;
+        }
+      });
     }
     expect(thrown).toBeDefined();
     expect(thrown?.message).toContain('Faltan variables de entorno');
+    expect(thrown?.message).toContain('ADMIN_PASSWORD');
+    expect(thrown?.message).toContain('ADMIN_TOKEN_SECRET');
     expect(thrown?.message).toContain('CANDIDATE_TOKEN_SECRET');
   });
 });

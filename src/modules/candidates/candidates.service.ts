@@ -1,18 +1,28 @@
 import {
   ConflictException,
   Injectable,
+  Logger,
   NotFoundException,
   UnauthorizedException,
 } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import { createHash, randomBytes } from 'node:crypto';
 import { AuthService } from '../auth/auth.service';
 import { hashPassword, verifyPassword } from '../../common/utils/password';
+import { MailerService } from '../mailer/mailer.service';
 import { CandidatesRepository, type CvFile } from './candidates.repository';
+
+const RESET_TOKEN_TTL_MS = 60 * 60 * 1000;
 
 @Injectable()
 export class CandidatesService {
+  private readonly logger = new Logger(CandidatesService.name);
+
   constructor(
     private readonly candidatesRepository: CandidatesRepository,
     private readonly authService: AuthService,
+    private readonly configService: ConfigService,
+    private readonly mailerService: MailerService,
   ) {}
 
   async register(data: { name: string; email: string; password: string }) {
@@ -61,6 +71,90 @@ export class CandidatesService {
       phone: data.phone === undefined ? candidate.phone : data.phone,
     });
     return this.toProfile(updated);
+  }
+
+  async changePassword(id: number, data: {
+    currentPassword: string;
+    newPassword: string;
+  }) {
+    const candidate = await this.findOrThrow(id);
+    if (!verifyPassword(data.currentPassword, candidate.passwordHash)) {
+      throw new UnauthorizedException('La contraseña actual es incorrecta');
+    }
+
+    await this.candidatesRepository.update(id, {
+      passwordHash: hashPassword(data.newPassword),
+    });
+    return { message: 'Contraseña actualizada con éxito' };
+  }
+
+  async requestPasswordReset(email: string) {
+    const normalized = email.trim().toLowerCase();
+    const candidate = await this.candidatesRepository.findByEmail(normalized);
+    if (!candidate) {
+      this.logger.warn(
+        `Solicitud de reset para correo no registrado: ${normalized}`,
+      );
+      return {
+        message:
+          'Si el correo está registrado, recibirás un enlace para restablecer tu contraseña.',
+      };
+    }
+
+    const resetToken = randomBytes(32).toString('hex');
+    const resetTokenHash = this.hashResetToken(resetToken);
+    await this.candidatesRepository.update(candidate.id, {
+      resetTokenHash,
+      resetTokenExpiresAt: new Date(Date.now() + RESET_TOKEN_TTL_MS),
+    });
+
+    const frontendUrl = this.configService.get<string>(
+      'FRONTEND_URL',
+      'http://localhost:3000',
+    );
+    const resetUrl = `${frontendUrl.replace(/\/$/, '')}/recuperar?token=${resetToken}`;
+    await this.mailerService.sendMail({
+      to: candidate.email,
+      subject: 'Recuperación de contraseña — EduScout',
+      html: `<p>Hola ${candidate.name},</p>
+<p>Recibimos una solicitud para restablecer tu contraseña en EduScout.</p>
+<p>Haz clic en el siguiente enlace para elegir una nueva contraseña (válido por 60 minutos):</p>
+<p><a href="${resetUrl}">Restablecer mi contraseña</a></p>
+<p>Si no solicitaste este cambio, ignora este correo y tu contraseña seguirá igual.</p>`,
+    });
+
+    return {
+      message:
+        'Si el correo está registrado, recibirás un enlace para restablecer tu contraseña.',
+    };
+  }
+
+  async resetPassword(token: string, newPassword: string) {
+    const resetTokenHash = this.hashResetToken(token);
+    const candidate =
+      await this.candidatesRepository.findByResetTokenHash(resetTokenHash);
+    if (
+      !candidate ||
+      !candidate.resetTokenExpiresAt ||
+      candidate.resetTokenExpiresAt.getTime() < Date.now()
+    ) {
+      throw new UnauthorizedException(
+        'El enlace de recuperación es inválido o ha expirado',
+      );
+    }
+
+    await this.candidatesRepository.update(candidate.id, {
+      passwordHash: hashPassword(newPassword),
+      resetTokenHash: null,
+      resetTokenExpiresAt: null,
+    });
+    return {
+      message: 'Contraseña actualizada con éxito. Ya puedes iniciar sesión.',
+    };
+  }
+
+  private hashResetToken(token: string): string {
+    return createHash('sha256').update(token).digest('hex');
   }
 
   async uploadCv(id: number, file: CvFile) {

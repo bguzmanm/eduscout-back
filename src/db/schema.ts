@@ -107,6 +107,8 @@ export const candidates = pgTable('candidates', {
   cvData: bytea('cv_data'),
   cvStatus: varchar('cv_status', { length: 20 }).notNull().default('pending'),
   cvUploadedAt: timestamp('cv_uploaded_at'),
+  resetTokenHash: varchar('reset_token_hash', { length: 64 }),
+  resetTokenExpiresAt: timestamp('reset_token_expires_at'),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 });

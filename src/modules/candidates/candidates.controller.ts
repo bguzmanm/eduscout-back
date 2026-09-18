@@ -28,8 +28,11 @@ import {
 } from '../auth/candidate-auth.guard';
 import { CandidatesService } from './candidates.service';
 import {
+  ChangePasswordCandidateDto,
   LoginCandidateDto,
   RegisterCandidateDto,
+  RequestPasswordResetDto,
+  ResetPasswordDto,
   UpdateCandidateDto,
 } from './dtos/candidate.dto';
 
@@ -58,6 +61,25 @@ export class CandidatesController {
     return this.candidatesService.login(dto);
   }
 
+  @Post('forgot-password')
+  @Throttle({ default: { limit: 5, ttl: 60000 } })
+  @ApiOperation({
+    summary: 'Solicitar un enlace de recuperación de contraseña por correo',
+  })
+  @ApiResponse({ status: 201, description: 'Solicitud procesada.' })
+  async forgotPassword(@Body() dto: RequestPasswordResetDto) {
+    return this.candidatesService.requestPasswordReset(dto.email);
+  }
+
+  @Post('reset-password')
+  @Throttle({ default: { limit: 10, ttl: 60000 } })
+  @ApiOperation({ summary: 'Restablecer la contraseña con el token recibido' })
+  @ApiResponse({ status: 201, description: 'Contraseña restablecida con éxito.' })
+  @ApiResponse({ status: 401, description: 'Enlace inválido o expirado.' })
+  async resetPassword(@Body() dto: ResetPasswordDto) {
+    return this.candidatesService.resetPassword(dto.token, dto.newPassword);
+  }
+
   @Get('me')
   @ApiBearerAuth()
   @UseGuards(CandidateAuthGuard)
@@ -74,6 +96,19 @@ export class CandidatesController {
   @ApiResponse({ status: 401, description: 'No autorizado.' })
   async updateMe(@Req() request: Request, @Body() dto: UpdateCandidateDto) {
     return this.candidatesService.updateProfile(getCandidateId(request), dto);
+  }
+
+  @Post('me/password')
+  @ApiBearerAuth()
+  @UseGuards(CandidateAuthGuard)
+  @ApiOperation({ summary: 'Cambiar la contraseña del postulante' })
+  @ApiResponse({ status: 201, description: 'Contraseña actualizada con éxito.' })
+  @ApiResponse({ status: 401, description: 'Contraseña actual incorrecta.' })
+  async changePassword(
+    @Req() request: Request,
+    @Body() dto: ChangePasswordCandidateDto,
+  ) {
+    return this.candidatesService.changePassword(getCandidateId(request), dto);
   }
 
   @Post('me/cv')
