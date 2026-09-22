@@ -64,6 +64,7 @@ export class ScrapingService {
     scraperType: string,
     slug: string,
     name: string,
+    baseUrl: string,
   ): ScraperAdapter | null {
     switch (scraperType) {
       case 'uchile_api':
@@ -81,7 +82,7 @@ export class ScrapingService {
       case 'html':
         return new UaiAdapter();
       case 'laborum':
-        return new LaborumAdapter();
+        return new LaborumAdapter(slug, name, baseUrl);
       case 'usm_vra':
         return new UsmVraAdapter();
       case 'uv_cargos':
@@ -270,6 +271,7 @@ export class ScrapingService {
     scraperType: string;
     name: string;
     logoUrl: string | null;
+    baseUrl: string;
   }): Promise<ScrapingRunSource> {
     const startedAt = Date.now();
     const entry: ScrapingRunSource = {
@@ -287,6 +289,7 @@ export class ScrapingService {
       source.scraperType,
       source.slug,
       source.name,
+      source.baseUrl,
     );
     if (!adapter) {
       entry.status = 'error';

@@ -96,6 +96,35 @@ export async function seedDatabase(db: DrizzleConnection) {
             logoUrl: 'https://mir-s3-cdn-cf.behance.net/projects/404/f75a6d143195739.Y3JvcCwyMTM4LDE2NzMsNDA3LDA.png',
           },
           {
+            name: 'Universidad Católica Silva Henríquez',
+            slug: 'ucsh',
+            baseUrl:
+              'https://www.laborum.cl/perfiles/empresa_universidad-catolica-silva-henriquez_12000824.html',
+            scraperType: 'laborum',
+            category: 'universidad_privada',
+            logoUrl:
+              'https://commons.wikimedia.org/wiki/Special:FilePath/Logo_ucsh.jpg?width=700',
+          },
+          {
+            name: 'AIEP',
+            slug: 'aiep',
+            baseUrl:
+              'https://www.laborum.cl/perfiles/empresa_instituto-profesional-aiep_13327053.html',
+            scraperType: 'laborum',
+            category: 'instituto_profesional',
+            logoUrl: 'https://www.aiep.cl/assets/uploads/2022/04/logo.svg',
+          },
+          {
+            name: 'IACC',
+            slug: 'iacc',
+            baseUrl:
+              'https://www.laborum.cl/perfiles/empresa_instituto-profesional-iacc_12102077.html',
+            scraperType: 'laborum',
+            category: 'instituto_profesional',
+            logoUrl:
+              'https://www.iacc.cl/wp-content/themes/iacc/assets/images/logo-iacc.webp',
+          },
+          {
             name: 'Instituto Profesional Iplacex',
             slug: 'iplacex',
             baseUrl: 'https://convocatoriasdocentes.iplacex.cl/',
@@ -149,7 +178,7 @@ export async function seedDatabase(db: DrizzleConnection) {
           },
         ])
         .returning();
-      console.log('✅ 14 fuentes creadas');
+      console.log('✅ 17 fuentes creadas');
     });
 
     console.log('✨ Seeding completado exitosamente');

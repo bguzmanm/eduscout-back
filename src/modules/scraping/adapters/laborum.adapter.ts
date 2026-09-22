@@ -3,17 +3,13 @@ import { Logger } from '@nestjs/common';
 import type { ScraperAdapter, RawJob } from './base.interface';
 
 const BASE_URL = 'https://www.laborum.cl';
-const EMPRESA_ID = 12054583;
 const PAGE_SIZE = 50;
-const REQUEST_HEADERS = {
-  'Accept': 'application/json',
-  'Content-Type': 'application/json',
-  'Accept-Language': 'es-CL,es;q=0.9',
-  'Referer': `${BASE_URL}/perfiles/empresa_instituto-profesional-de-chile_${EMPRESA_ID}.html`,
-  'x-site-id': 'BMCL',
-  'User-Agent':
-    'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36',
-};
+const AREA_EDUCACION_DOCENCIA_INVESTIGACION = 'educacion-docencia-e-investigacion';
+
+export function extractEmpresaId(baseUrl: string): number {
+  const match = baseUrl.match(/_(\d+)\.html$/);
+  return match ? Number(match[1]) : NaN;
+}
 
 interface LaborumAviso {
   id: number;
@@ -38,12 +34,40 @@ const JOB_TYPE_MAP: Record<string, string> = {
 };
 
 export class LaborumAdapter implements ScraperAdapter {
-  sourceSlug = 'ip-chile';
-  sourceName = 'IP Chile';
+  sourceSlug: string;
+  sourceName: string;
   private readonly logger = new Logger('LaborumAdapter');
+  private readonly empresaId: number;
+  private readonly profileUrl: string;
+
+  constructor(slug: string, name: string, baseUrl: string) {
+    this.sourceSlug = slug;
+    this.sourceName = name;
+    this.profileUrl = baseUrl;
+    this.empresaId = extractEmpresaId(baseUrl);
+  }
+
+  private get requestHeaders() {
+    return {
+      'Accept': 'application/json',
+      'Content-Type': 'application/json',
+      'Accept-Language': 'es-CL,es;q=0.9',
+      'Referer': this.profileUrl,
+      'x-site-id': 'BMCL',
+      'User-Agent':
+        'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36',
+    };
+  }
 
   async fetchListings(): Promise<RawJob[]> {
     const jobs: RawJob[] = [];
+
+    if (Number.isNaN(this.empresaId)) {
+      this.logger.error(
+        `No fue posible extraer el ID de empresa desde: ${this.profileUrl}`,
+      );
+      return jobs;
+    }
 
     try {
       const firstPage = await this.fetchPage(0);
@@ -72,11 +96,11 @@ export class LaborumAdapter implements ScraperAdapter {
     const { data } = await axios.post<SearchV2Response>(
       `${BASE_URL}/api/avisos/searchV2?page=${page}&pageSize=${PAGE_SIZE}`,
       {
-        empresaId: EMPRESA_ID,
-        filtros: [],
+        empresaId: this.empresaId,
+        filtros: [{ id: 'area', value: AREA_EDUCACION_DOCENCIA_INVESTIGACION }],
         tipoDetalle: 'full',
       },
-      { headers: REQUEST_HEADERS, timeout: 20000 },
+      { headers: this.requestHeaders, timeout: 20000 },
     );
 
     return data;

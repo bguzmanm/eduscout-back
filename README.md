@@ -93,18 +93,23 @@ src/
 │   │   ├── services/
 │   │   ├── repositories/
 │   │   └── dtos/
-│   └── scraping/
-│       ├── scraping.module.ts
-│       ├── scraping.controller.ts   # POST /api/scraping/run
-│       ├── scraping.service.ts      # Orquestación de scrapers
-│       ├── scraping.scheduler.ts    # Cron diario 6:00 AM
-│       └── adapters/                # 5 adaptadores de scraping
-│           ├── base.interface.ts
-│           ├── uchile.adapter.ts
-│           ├── uc.adapter.ts
-│           ├── trabajando-cl.adapter.ts
-│           ├── uai.adapter.ts
-│           └── laborum.adapter.ts
+│       └── scraping/                # Orquestación de scrapers
+│           ├── scraping.module.ts
+│           ├── scraping.service.ts      # Orquestación de scrapers
+│           ├── scraping.scheduler.ts    # Cron diario 6:00 AM
+│           └── adapters/                # Adaptadores de scraping
+│               ├── base.interface.ts
+│               ├── uchile.adapter.ts
+│               ├── uc.adapter.ts
+│               ├── trabajando-cl.adapter.ts
+│               ├── santo-tomas.adapter.ts
+│               ├── uai.adapter.ts
+│               ├── laborum.adapter.ts
+│               ├── iplacex.adapter.ts
+│               ├── getonboard.adapter.ts
+│               ├── usm-vra.adapter.ts
+│               ├── uv-cargos.adapter.ts
+│               └── hiringroom.adapter.ts
 ├── common/
 │   ├── decorators/
 │   ├── dto/
@@ -158,15 +163,21 @@ scripts/
 
 ## Scraping
 
-EduScout scraping 5 tipos de sitios web mediante adaptadores especializados:
+EduScout scraping los sitios de las instituciones mediante adaptadores especializados:
 
 | Adaptador | Tipo | Técnica | Fuentes |
 |-----------|------|---------|---------|
 | `UchileAdapter` | `uchile_api` | Axios + API REST | U. de Chile |
-| `UcAdapter` | `wordpress` | Axios + Cheerio (HTML) | UC, IP Santo Tomás |
-| `TrabajandoClAdapter` | `trabajando_cl` | Axios + parsing `__NUXT_DATA__` | UNAB, INACAP, Duoc, UDLA |
+| `UcAdapter` | `wordpress` | Axios + Cheerio (HTML) | UC |
+| `TrabajandoClAdapter` | `trabajando_cl` | Axios + parsing `__NUXT_DATA__` | UNAB, INACAP, UDLA, UDEC |
+| `SantoTomasAdapter` | `santo_tomas` | Axios + parsing `__NUXT_DATA__` | IP Santo Tomás |
 | `UaiAdapter` | `html` | Axios + Cheerio (HTML) | UAI |
-| `LaborumAdapter` | `laborum` | Playwright (headless Chromium) | IP Chile |
+| `LaborumAdapter` | `laborum` | Axios + API REST (searchV2) | IP Chile, UCSH, AIEP, IACC |
+| `IplacexAdapter` | `iplacex_api` | Axios + API REST | Iplacex |
+| `GetOnBoardAdapter` | `getonboard` | Axios + API v0 Get On Board | Duoc UC |
+| `UsmVraAdapter` | `usm_vra` | Feed RSS + Cheerio | USM |
+| `UvCargosAdapter` | `uv_cargos` | Feed RSS Joomla + Cheerio | U. de Valparaíso |
+| `HiringRoomAdapter` | `hiringroom` | Axios + Cheerio | UNIACC |
 
 El scraping se ejecuta automáticamente todos los días a las **6:00 AM** vía `@nestjs/schedule`. También se puede trigger manualmente con el endpoint `POST /api/scraping/run`.
 
