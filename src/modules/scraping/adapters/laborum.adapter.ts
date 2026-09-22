@@ -33,6 +33,169 @@ const JOB_TYPE_MAP: Record<string, string> = {
   'part time': 'Part Time',
 };
 
+const SECTION_HEADINGS = [
+  'funciones del puesto',
+  'funciones y responsabilidades',
+  'objetivo del cargo',
+  'principales funciones',
+  'condiciones del cargo',
+  'condiciones laborales',
+  'misión del cargo',
+  'objetivo del puesto',
+  'perfil del candidato',
+  'perfil requerido',
+  'perfil del cargo',
+  'requisitos del cargo',
+  'plazo de postulación',
+  'lugar de trabajo',
+  'jornada laboral',
+  'cómo postular',
+  'como postular',
+  'remuneración',
+  'conocimientos',
+  'educación',
+  'experiencia',
+  'deseable',
+  'beneficios',
+  'vacantes',
+  'postulación',
+  'funciones',
+  'misión',
+  'perfil',
+  'requisitos',
+  'jornada',
+  'ofrecemos',
+].sort((a, b) => b.length - a.length);
+
+const capitalizer = (label: string): string =>
+  label.charAt(0).toUpperCase() + label.slice(1);
+
+function breaksSortUniq(values: number[]): number[] {
+  values.sort((a, b) => a - b);
+  return values.filter((value, i) => i === 0 || value !== values[i - 1]);
+}
+
+function isSectionHeadingBoundary(
+  text: string,
+  index: number,
+  label: string,
+): boolean {
+  let prev = index - 1;
+  while (prev >= 0 && text[prev] === ' ') prev--;
+  const prevChar = prev < 0 ? '\n' : text[prev];
+  const atStart = prev < 0;
+  const gluedAfterPunctuation =
+    prevChar === '.' || prevChar === '!' || prevChar === '?';
+  const afterParagraphBreak = prevChar === '\n';
+
+  let next = index + label.length;
+  const hasColon = text[next] === ':';
+  if (hasColon) next++;
+  const nextChar = text[next] ?? '';
+  const followedByBoundary =
+    nextChar === '' || nextChar === ' ' || nextChar === '\n';
+
+  if (!followedByBoundary) return false;
+  if (atStart || gluedAfterPunctuation) return true;
+  // Tras un salto de párrafo solo marcamos como título si usa ":" para evitar
+  // marcar frases que simplemente comienzan con la misma palabra.
+  return afterParagraphBreak && hasColon;
+}
+
+/**
+ * La API de Laborum entrega el detalle como texto plano sin formato: los
+ * saltos de línea originales quedan colapsados a 2+ espacios y los títulos
+ * de sección ("Requisitos:", "Funciones:") quedan pegados al texto anterior.
+ * Esta función reconstruye párrafos y destaca los títulos de sección como
+ * HTML ligero que el frontend ya sabe renderizar de forma segura.
+ */
+export function formatLaborumDescription(
+  value: string | null | undefined,
+): string | null {
+  if (!value) return null;
+
+  let text = value
+    .trim()
+    .replace(/\s{2,}/g, '\n')
+    .replace(/[^\S\n]+/g, ' ')
+    .trim();
+  if (!text) return null;
+
+  // Numeración de ítems ("3. Competencias:", "2) Experiencia") como
+  // separadores cuando siguen a un punto o salto de párrafo.
+  text = text.replace(
+    /(?<=[.!?])\s+(?=\d{1,2}[.)]\s+[A-ZÁÉÍÓÚÑ0-9"'“(])/g,
+    '\n',
+  );
+  text = text.replace(
+    /(?<=[.!?])(\d{1,2}[.)])(?=\s+[A-ZÁÉÍÓÚÑ0-9"'“(])/gi,
+    '\n$1',
+  );
+
+  const lowerText = text.toLowerCase();
+  const breaks: number[] = [];
+  for (const label of SECTION_HEADINGS) {
+    let index = lowerText.indexOf(label);
+    while (index !== -1) {
+      if (isSectionHeadingBoundary(text, index, label)) breaks.push(index);
+      index = lowerText.indexOf(label, index + label.length);
+    }
+  }
+  breaksSortUniq(breaks);
+
+  // Marca los encabezados detectados con un carácter centinela para poder
+  // distinguir, al armar párrafos, los que nacen de un título real de los que
+  // simplemente empiezan con la misma palabra tras un salto de línea.
+  const HEADING_MARK = '\u0001';
+  for (const boundary of [...breaks].reverse()) {
+    const prefix = text[boundary - 1] === '\n' ? HEADING_MARK : `\n${HEADING_MARK}`;
+    text = `${text.slice(0, boundary)}${prefix}${text.slice(boundary)}`;
+  }
+
+  const blocks: string[] = [];
+  let firstParagraph = true;
+  for (const raw of text.split('\n')) {
+    let paragraph = raw;
+    const fromHeadingMark = paragraph.startsWith(HEADING_MARK);
+    if (fromHeadingMark) paragraph = paragraph.slice(1);
+    paragraph = paragraph.trim();
+    if (!paragraph) continue;
+
+    const isFirst = firstParagraph;
+    firstParagraph = false;
+
+    const lower = paragraph.toLowerCase();
+    const heading = SECTION_HEADINGS.find((label) =>
+      lower.startsWith(label),
+    );
+    if (!heading) {
+      blocks.push(`<p>${paragraph}</p>`);
+      continue;
+    }
+
+    let after = heading.length;
+    let hasColon = false;
+    if (paragraph[after] === ':') {
+      hasColon = true;
+      after++;
+    }
+    if (paragraph[after] === ' ') after++;
+    const rest = paragraph.slice(after).trim();
+
+    // Solo destacamos como título si usa ":" o si nace de un encabezado
+    // real (pegado tras un punto o al inicio de la descripción).
+    if (!hasColon && !fromHeadingMark && !isFirst) {
+      blocks.push(`<p>${paragraph}</p>`);
+      continue;
+    }
+
+    const title = `<strong>${capitalizer(heading)}${hasColon ? ':' : '.'}</strong>`;
+    blocks.push(rest ? `<p>${title} ${rest}</p>` : `<p>${title}</p>`);
+  }
+
+  return blocks.join('\n');
+}
+
 export class LaborumAdapter implements ScraperAdapter {
   sourceSlug: string;
   sourceName: string;
@@ -119,7 +282,7 @@ export class LaborumAdapter implements ScraperAdapter {
       location: ciudad,
       region: this.mapRegion(provincia) ?? provincia,
       jobType: this.mapJobType(aviso.tipoTrabajo),
-      description: aviso.detalle || null,
+      description: formatLaborumDescription(aviso.detalle),
       requirements: null,
       salaryRange: null,
       publishedAt: this.parseDate(aviso.fechaPublicacion),
