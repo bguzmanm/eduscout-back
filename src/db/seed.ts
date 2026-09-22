@@ -103,7 +103,7 @@ export async function seedDatabase(db: DrizzleConnection) {
             scraperType: 'laborum',
             category: 'universidad_privada',
             logoUrl:
-              'https://commons.wikimedia.org/wiki/Special:FilePath/Logo_ucsh.jpg?width=700',
+              'https://imgbum.jobscdn.com/portal/img/empresas/1007/static/logoMainPic_12000824_bum_v2af749a4.jpg',
           },
           {
             name: 'AIEP',
@@ -112,7 +112,8 @@ export async function seedDatabase(db: DrizzleConnection) {
               'https://www.laborum.cl/perfiles/empresa_instituto-profesional-aiep_13327053.html',
             scraperType: 'laborum',
             category: 'instituto_profesional',
-            logoUrl: 'https://www.aiep.cl/assets/uploads/2022/04/logo.svg',
+            logoUrl:
+              'https://imgbum.jobscdn.com/portal/img/empresas/1007/static/logoMainPic_13327053_bum_ve121baca.jpg',
           },
           {
             name: 'IACC',
@@ -122,7 +123,7 @@ export async function seedDatabase(db: DrizzleConnection) {
             scraperType: 'laborum',
             category: 'instituto_profesional',
             logoUrl:
-              'https://www.iacc.cl/wp-content/themes/iacc/assets/images/logo-iacc.webp',
+              'https://imgbum.jobscdn.com/portal/img/empresas/1007/static/logoMainPic_12102077_bum_vc83099c6.jpg',
           },
           {
             name: 'Instituto Profesional Iplacex',
