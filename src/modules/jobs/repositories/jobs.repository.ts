@@ -2,7 +2,18 @@ import { Inject, Injectable } from '@nestjs/common';
 import { DRIZZLE_PROVIDER } from '../../database/database.module';
 import { PostgresJsDatabase } from 'drizzle-orm/postgres-js';
 import * as schema from '../../../db/schema';
-import { and, eq, ilike, gte, count, isNotNull, SQL, desc } from 'drizzle-orm';
+import {
+  and,
+  eq,
+  ilike,
+  inArray,
+  gte,
+  count,
+  isNotNull,
+  SQL,
+  desc,
+} from 'drizzle-orm';
+import { REGIONS, normalizeRegion } from '../../../common/utils/regions';
 
 type JobWithSource = typeof schema.jobs.$inferSelect & {
   source: typeof schema.sources.$inferSelect | null;
@@ -108,10 +119,18 @@ export class JobsRepository {
       ),
     });
 
+    // Los adapters scrapean la región como texto libre: se canoniza aquí, que
+    // es el único punto por donde entran ofertas. Si el adapter no la informa
+    // (undefined) no se toca la que ya tuviera la oferta.
+    const payload =
+      data.region === undefined
+        ? data
+        : { ...data, region: normalizeRegion(data.region) };
+
     if (existing) {
       const [updated] = await this.db
         .update(schema.jobs)
-        .set({ ...data, scrapedAt: new Date(), updatedAt: new Date() })
+        .set({ ...payload, scrapedAt: new Date(), updatedAt: new Date() })
         .where(eq(schema.jobs.id, existing.id))
         .returning();
       return { ...updated, isNew: false };
@@ -119,7 +138,7 @@ export class JobsRepository {
 
     const [created] = await this.db
       .insert(schema.jobs)
-      .values({ sourceId, externalId, ...data } as typeof schema.jobs.$inferInsert)
+      .values({ sourceId, externalId, ...payload } as typeof schema.jobs.$inferInsert)
       .returning();
     return { ...created, isNew: true };
   }
@@ -152,7 +171,11 @@ export class JobsRepository {
       })
       .from(schema.jobs)
       .where(
-        and(eq(schema.jobs.isActive, true), isNotNull(schema.jobs.region)),
+        and(
+          eq(schema.jobs.isActive, true),
+          isNotNull(schema.jobs.region),
+          inArray(schema.jobs.region, [...REGIONS]),
+        ),
       )
       .groupBy(schema.jobs.region);
 
