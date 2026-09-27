@@ -14,6 +14,41 @@ import {
   desc,
 } from 'drizzle-orm';
 import { REGIONS, normalizeRegion } from '../../../common/utils/regions';
+import { normalizeRichText, normalizeText } from '../../../common/utils/text';
+
+/** Columnas de texto de una línea que los adapters scrapean con espacios raros. */
+const SINGLE_LINE_FIELDS = [
+  'title',
+  'company',
+  'department',
+  'location',
+  'jobType',
+  'salaryRange',
+] as const;
+
+/** Columnas con HTML y saltos de línea que hay que preservar. */
+const RICH_TEXT_FIELDS = ['description', 'requirements'] as const;
+
+type JobInput = Partial<typeof schema.jobs.$inferInsert>;
+
+function sanitizeJobText(data: JobInput): JobInput {
+  const sanitized: Record<string, unknown> = { ...data };
+
+  for (const field of SINGLE_LINE_FIELDS) {
+    if (data[field] === undefined) continue;
+    // Si el adapter mandó solo espacios se conserva tal cual: `title` es NOT
+    // NULL y no corresponde inventar un valor desde la capa de saneo.
+    const value = normalizeText(data[field]);
+    sanitized[field] = value ?? data[field];
+  }
+
+  for (const field of RICH_TEXT_FIELDS) {
+    if (data[field] === undefined) continue;
+    sanitized[field] = normalizeRichText(data[field]) ?? null;
+  }
+
+  return sanitized as JobInput;
+}
 
 type JobWithSource = typeof schema.jobs.$inferSelect & {
   source: typeof schema.sources.$inferSelect | null;
@@ -110,7 +145,7 @@ export class JobsRepository {
   async upsert(
     sourceId: number,
     externalId: string,
-    data: Partial<typeof schema.jobs.$inferInsert>,
+    data: JobInput,
   ): Promise<typeof schema.jobs.$inferSelect & { isNew: boolean }> {
     const existing = await this.db.query.jobs.findFirst({
       where: and(
@@ -119,13 +154,15 @@ export class JobsRepository {
       ),
     });
 
+    const clean = sanitizeJobText(data);
+
     // Los adapters scrapean la región como texto libre: se canoniza aquí, que
     // es el único punto por donde entran ofertas. Si el adapter no la informa
     // (undefined) no se toca la que ya tuviera la oferta.
     const payload =
-      data.region === undefined
-        ? data
-        : { ...data, region: normalizeRegion(data.region) };
+      clean.region === undefined
+        ? clean
+        : { ...clean, region: normalizeRegion(clean.region) };
 
     if (existing) {
       const [updated] = await this.db
