@@ -10,6 +10,7 @@ import { ScrapingModule } from './modules/scraping/scraping.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { CandidatesModule } from './modules/candidates/candidates.module';
 import { AlertsModule } from './modules/alerts/alerts.module';
+import { SavedJobsModule } from './modules/saved-jobs/saved-jobs.module';
 import { AdminModule } from './modules/admin/admin.module';
 import { MailerModule } from './modules/mailer/mailer.module';
 
@@ -25,6 +26,7 @@ import { MailerModule } from './modules/mailer/mailer.module';
     ScrapingModule,
     CandidatesModule,
     AlertsModule,
+    SavedJobsModule,
     AdminModule,
     MailerModule,
   ],

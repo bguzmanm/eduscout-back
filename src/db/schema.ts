@@ -93,6 +93,7 @@ export const jobsRelations = relations(jobs, ({ one, many }) => ({
     references: [sources.id],
   }),
   alertMatches: many(alertMatches),
+  savedBy: many(savedJobs),
 }));
 
 export const candidates = pgTable('candidates', {
@@ -115,6 +116,7 @@ export const candidates = pgTable('candidates', {
 
 export const candidatesRelations = relations(candidates, ({ many }) => ({
   alerts: many(alerts),
+  savedJobs: many(savedJobs),
 }));
 
 export const alerts = pgTable('alerts', {
@@ -163,6 +165,32 @@ export const alertMatchesRelations = relations(alertMatches, ({ one }) => ({
   }),
   job: one(jobs, {
     fields: [alertMatches.jobId],
+    references: [jobs.id],
+  }),
+}));
+
+export const savedJobs = pgTable(
+  'saved_jobs',
+  {
+    id: serial('id').primaryKey(),
+    candidateId: integer('candidate_id')
+      .references(() => candidates.id, { onDelete: 'cascade' })
+      .notNull(),
+    jobId: integer('job_id')
+      .references(() => jobs.id, { onDelete: 'cascade' })
+      .notNull(),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+  },
+  (t) => [unique('saved_jobs_candidate_job_unique').on(t.candidateId, t.jobId)],
+);
+
+export const savedJobsRelations = relations(savedJobs, ({ one }) => ({
+  candidate: one(candidates, {
+    fields: [savedJobs.candidateId],
+    references: [candidates.id],
+  }),
+  job: one(jobs, {
+    fields: [savedJobs.jobId],
     references: [jobs.id],
   }),
 }));
