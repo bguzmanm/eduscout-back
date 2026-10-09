@@ -70,9 +70,9 @@ export class UaiAdapter implements ScraperAdapter {
     };
     const match = text.match(/(\d+)\s+de\s+(\w+)\s+de\s+(\d{4})/i);
     if (match) {
-      const day = parseInt(match[1], 10);
+      const day = Number.parseInt(match[1], 10);
       const month = months[match[2].toLowerCase()];
-      const year = parseInt(match[3], 10);
+      const year = Number.parseInt(match[3], 10);
       if (month !== undefined) {
         return new Date(year, month, day);
       }

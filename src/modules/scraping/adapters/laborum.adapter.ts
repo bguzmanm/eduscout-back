@@ -8,7 +8,7 @@ const AREA_EDUCACION_DOCENCIA_INVESTIGACION = 'educacion-docencia-e-investigacio
 
 export function extractEmpresaId(baseUrl: string): number {
   const match = baseUrl.match(/_(\d+)\.html$/);
-  return match ? Number(match[1]) : NaN;
+  return match ? Number(match[1]) : Number.NaN;
 }
 
 interface LaborumAviso {
