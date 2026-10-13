@@ -48,9 +48,22 @@ export class AdminService {
 
   async listCandidates(query: ListAdminCandidatesDto) {
     return this.adminRepository.listCandidates(
-      { q: query.q, hasCv: query.hasCv },
+      {
+        q: query.q,
+        hasCv: query.hasCv,
+        alertState:
+          query.alertState && query.alertState !== 'all'
+            ? query.alertState
+            : undefined,
+      },
       query.page,
       query.limit,
     );
+  }
+
+  async listCandidateAlerts(candidateId: number) {
+    const items =
+      await this.adminRepository.listAlertsByCandidate(candidateId);
+    return { items };
   }
 }

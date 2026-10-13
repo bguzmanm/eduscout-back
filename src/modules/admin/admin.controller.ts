@@ -1,4 +1,4 @@
-import { Controller, Get, Query, UseGuards } from '@nestjs/common';
+import { Controller, Get, Param, ParseIntPipe, Query, UseGuards } from '@nestjs/common';
 import {
   ApiBearerAuth,
   ApiOperation,
@@ -10,6 +10,7 @@ import { ApiWrappedResponse } from '../../common/decorators/api-wrapped-response
 import { AdminAuthGuard } from '../auth/admin-auth.guard';
 import { AdminService } from './admin.service';
 import {
+  AdminCandidateAlertsResponseDto,
   AdminCandidatesPageResponseDto,
   CandidateStatsDto,
   ListAdminCandidatesDto,
@@ -52,6 +53,13 @@ export class AdminController {
     required: false,
     description: 'Filtro por presencia de CV (true/false)',
   })
+  @ApiQuery({
+    name: 'alertState',
+    required: false,
+    enum: ['all', 'active', 'inactive'],
+    description:
+      'Filtra postulantes según el estado de sus alertas (activas o pausadas)',
+  })
   @ApiQuery({ name: 'page', required: false })
   @ApiQuery({ name: 'limit', required: false })
   @ApiWrappedResponse(
@@ -62,5 +70,22 @@ export class AdminController {
   @ApiResponse({ status: 401, description: 'No autorizado.' })
   async listCandidates(@Query() query: ListAdminCandidatesDto) {
     return this.adminService.listCandidates(query);
+  }
+
+  @Get('candidates/:id/alerts')
+  @ApiBearerAuth()
+  @UseGuards(AdminAuthGuard)
+  @ApiOperation({
+    summary: 'Listar las alertas configuradas por un postulante',
+  })
+  @ApiWrappedResponse(
+    AdminCandidateAlertsResponseDto,
+    200,
+    'Alertas del postulante devueltas con éxito.',
+  )
+  @ApiResponse({ status: 401, description: 'No autorizado.' })
+  @ApiResponse({ status: 404, description: 'Postulante no encontrado.' })
+  async listCandidateAlerts(@Param('id', ParseIntPipe) id: number) {
+    return this.adminService.listCandidateAlerts(id);
   }
 }

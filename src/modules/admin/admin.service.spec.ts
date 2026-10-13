@@ -5,6 +5,7 @@ import type { AdminRepository, CandidateStatsRaw } from './admin.repository';
 function makeRepository(
   overrides: Partial<CandidateStatsRaw> = {},
   listCandidates?: AdminRepository['listCandidates'],
+  listAlertsByCandidate?: AdminRepository['listAlertsByCandidate'],
 ): AdminRepository {
   return {
     getCandidateStats: async () => ({
@@ -25,6 +26,7 @@ function makeRepository(
       ...overrides,
     }),
     listCandidates,
+    listAlertsByCandidate,
   } as AdminRepository;
 }
 
@@ -106,7 +108,11 @@ describe('AdminService', () => {
     const repo = makeRepository(
       {},
       async (filters, page, limit) => {
-        expect(filters).toEqual({ q: 'maría', hasCv: true });
+        expect(filters).toEqual({
+          q: 'maría',
+          hasCv: true,
+          alertState: 'active',
+        });
         expect(page).toBe(2);
         expect(limit).toBe(10);
         return paged;
@@ -117,10 +123,50 @@ describe('AdminService', () => {
     const result = await service.listCandidates({
       q: 'maría',
       hasCv: true,
+      alertState: 'active',
       page: 2,
       limit: 10,
     } as never);
 
     expect(result).toEqual(paged);
+  });
+
+  it('omite el filtro de estado cuando es "all"', async () => {
+    const repo = makeRepository({}, async (filters) => {
+      expect(filters.alertState).toBeUndefined();
+      return {
+        items: [],
+        meta: { page: 1, limit: 20, total: 0, totalPages: 0 },
+      };
+    });
+    const service = new AdminService(repo);
+
+    await service.listCandidates({ alertState: 'all' } as never);
+  });
+
+  it('devuelve las alertas configuradas por un postulante', async () => {
+    const alerts = [
+      {
+        id: 5,
+        name: 'Docencia en la RM',
+        keywords: ['profesor'],
+        regions: ['Metropolitana'],
+        jobTypes: [],
+        categories: [],
+        isActive: true,
+        matchCount: 4,
+        createdAt: '2026-09-10T20:15:00.000Z',
+        updatedAt: '2026-09-12T09:00:00.000Z',
+      },
+    ];
+    const repo = makeRepository({}, undefined, async (candidateId) => {
+      expect(candidateId).toBe(7);
+      return alerts;
+    });
+    const service = new AdminService(repo);
+
+    const result = await service.listCandidateAlerts(7);
+
+    expect(result).toEqual({ items: alerts });
   });
 });

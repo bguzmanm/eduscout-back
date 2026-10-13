@@ -1,4 +1,4 @@
-import { Inject, Injectable } from '@nestjs/common';
+import { Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { DRIZZLE_PROVIDER } from '../database/database.module';
 import { PostgresJsDatabase } from 'drizzle-orm/postgres-js';
 import * as schema from '../../db/schema';
@@ -7,8 +7,10 @@ import {
   count,
   desc,
   eq,
+  exists,
   gte,
   ilike,
+  inArray,
   isNotNull,
   isNull,
   or,
@@ -24,6 +26,20 @@ export interface AlertsPerCandidate {
 export interface ListCandidatesFilters {
   q?: string;
   hasCv?: boolean;
+  alertState?: 'active' | 'inactive';
+}
+
+export interface AdminCandidateAlertRow {
+  id: number;
+  name: string;
+  keywords: string[];
+  regions: string[];
+  jobTypes: string[];
+  categories: string[];
+  isActive: boolean;
+  matchCount: number;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface AdminCandidateRow {
@@ -163,6 +179,21 @@ export class AdminRepository {
     if (filters.hasCv === false) {
       conditions.push(isNull(schema.candidates.cvData));
     }
+    if (filters.alertState) {
+      conditions.push(
+        exists(
+          this.db
+            .select({ one: sql`1` })
+            .from(schema.alerts)
+            .where(
+              and(
+                eq(schema.alerts.candidateId, schema.candidates.id),
+                eq(schema.alerts.isActive, filters.alertState === 'active'),
+              ),
+            ),
+        ),
+      );
+    }
 
     const where = conditions.length > 0 ? and(...conditions) : undefined;
 
@@ -235,5 +266,56 @@ export class AdminRepository {
         totalPages: Math.ceil(Number(total) / limit),
       },
     };
+  }
+
+  async listAlertsByCandidate(
+    candidateId: number,
+  ): Promise<AdminCandidateAlertRow[]> {
+    const [candidate] = await this.db
+      .select({ id: schema.candidates.id })
+      .from(schema.candidates)
+      .where(eq(schema.candidates.id, candidateId));
+
+    if (!candidate) {
+      throw new NotFoundException('Postulante no encontrado');
+    }
+
+    const alerts = await this.db
+      .select({
+        id: schema.alerts.id,
+        name: schema.alerts.name,
+        keywords: schema.alerts.keywords,
+        regions: schema.alerts.regions,
+        jobTypes: schema.alerts.jobTypes,
+        categories: schema.alerts.categories,
+        isActive: schema.alerts.isActive,
+        createdAt: schema.alerts.createdAt,
+        updatedAt: schema.alerts.updatedAt,
+      })
+      .from(schema.alerts)
+      .where(eq(schema.alerts.candidateId, candidateId))
+      .orderBy(desc(schema.alerts.createdAt));
+
+    if (alerts.length === 0) return [];
+
+    const counts = await this.db
+      .select({
+        alertId: schema.alertMatches.alertId,
+        matchCount: count(),
+      })
+      .from(schema.alertMatches)
+      .where(inArray(schema.alertMatches.alertId, alerts.map((a) => a.id)))
+      .groupBy(schema.alertMatches.alertId);
+
+    const countByAlert = new Map(
+      counts.map((row) => [row.alertId, Number(row.matchCount)]),
+    );
+
+    return alerts.map((alert) => ({
+      ...alert,
+      matchCount: countByAlert.get(alert.id) ?? 0,
+      createdAt: alert.createdAt.toISOString(),
+      updatedAt: alert.updatedAt.toISOString(),
+    }));
   }
 }

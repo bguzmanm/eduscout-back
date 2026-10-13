@@ -1,8 +1,11 @@
 import { ApiProperty, ApiExtraModels, getSchemaPath } from '@nestjs/swagger';
-import { IsOptional, IsBoolean, IsString } from 'class-validator';
+import { IsOptional, IsBoolean, IsString, IsIn } from 'class-validator';
 import { Transform } from 'class-transformer';
 import { PaginationDto } from '../../../common/dto/pagination.dto';
 import type { PaginationMeta } from '../../../common/types';
+
+export const ADMIN_ALERT_STATES = ['all', 'active', 'inactive'] as const;
+export type AdminAlertState = (typeof ADMIN_ALERT_STATES)[number];
 
 export class ListAdminCandidatesDto extends PaginationDto {
   @ApiProperty({
@@ -23,6 +26,17 @@ export class ListAdminCandidatesDto extends PaginationDto {
   @Transform(({ value }) => value === 'true' || value === true)
   @IsBoolean()
   hasCv?: boolean;
+
+  @ApiProperty({
+    required: false,
+    description:
+      'Filtra postulantes según el estado de sus alertas (all = con o sin alertas, active = con al menos una alerta activa, inactive = con al menos una alerta pausada)',
+    enum: ADMIN_ALERT_STATES,
+    example: 'active',
+  })
+  @IsOptional()
+  @IsIn(ADMIN_ALERT_STATES)
+  alertState?: AdminAlertState;
 }
 
 export class AdminCandidateDto {
@@ -114,6 +128,82 @@ export class AdminCandidatesPageResponseDto {
     example: { page: 1, limit: 20, total: 42, totalPages: 3 },
   })
   meta: PaginationMeta;
+}
+
+export class AdminCandidateAlertDto {
+  @ApiProperty({
+    description: 'Identificador de la alerta',
+    example: 15,
+  })
+  id: number;
+
+  @ApiProperty({
+    description: 'Nombre de la alerta',
+    example: 'Docencia en la Región Metropolitana',
+  })
+  name: string;
+
+  @ApiProperty({
+    description: 'Palabras clave configuradas',
+    type: [String],
+    example: ['profesor', 'historia'],
+  })
+  keywords: string[];
+
+  @ApiProperty({
+    description: 'Regiones configuradas',
+    type: [String],
+    example: ['Metropolitana'],
+  })
+  regions: string[];
+
+  @ApiProperty({
+    description: 'Tipos de jornada configurados',
+    type: [String],
+    example: ['Jornada Completa'],
+  })
+  jobTypes: string[];
+
+  @ApiProperty({
+    description: 'Categorías de institución configuradas',
+    type: [String],
+    example: ['universidad_publica'],
+  })
+  categories: string[];
+
+  @ApiProperty({
+    description: 'Si la alerta está activa o pausada',
+    example: true,
+  })
+  isActive: boolean;
+
+  @ApiProperty({
+    description: 'Cantidad de ofertas que han calzado con la alerta',
+    example: 12,
+  })
+  matchCount: number;
+
+  @ApiProperty({
+    description: 'Fecha de creación de la alerta',
+    example: '2026-09-10T20:15:00.000Z',
+  })
+  createdAt: string;
+
+  @ApiProperty({
+    description: 'Última actualización de la alerta',
+    example: '2026-09-15T10:00:00.000Z',
+  })
+  updatedAt: string;
+}
+
+@ApiExtraModels(AdminCandidateAlertDto)
+export class AdminCandidateAlertsResponseDto {
+  @ApiProperty({
+    description: 'Alertas configuradas por el postulante',
+    type: 'array',
+    items: { $ref: getSchemaPath(AdminCandidateAlertDto) },
+  })
+  items: AdminCandidateAlertDto[];
 }
 
 export class AlertsDistributionDto {
