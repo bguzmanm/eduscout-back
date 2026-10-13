@@ -120,6 +120,13 @@
       "when": 1791928514510,
       "tag": "0016_canales_notificacion",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1791929764956,
+      "tag": "0017_telegram_link_token_expiry",
+      "breakpoints": true
     }
   ]
 }

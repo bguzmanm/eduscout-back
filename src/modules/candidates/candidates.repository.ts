@@ -59,8 +59,12 @@ export class CandidatesRepository {
   async setTelegramLinkToken(
     id: number,
     token: string,
+    expiresAt: Date,
   ): Promise<CandidateRow> {
-    return this.update(id, { telegramLinkToken: token });
+    return this.update(id, {
+      telegramLinkToken: token,
+      telegramLinkTokenExpiresAt: expiresAt,
+    });
   }
 
   async linkTelegram(id: number, chatId: string): Promise<CandidateRow> {
@@ -68,6 +72,7 @@ export class CandidatesRepository {
       telegramChatId: chatId,
       notifyByTelegram: true,
       telegramLinkToken: null,
+      telegramLinkTokenExpiresAt: null,
     });
   }
 

@@ -1,0 +1,1 @@
+ALTER TABLE "candidates" ADD COLUMN "telegram_link_token_expires_at" timestamp;

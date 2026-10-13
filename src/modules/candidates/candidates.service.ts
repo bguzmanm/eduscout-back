@@ -13,6 +13,7 @@ import { MailerService } from '../mailer/mailer.service';
 import { CandidatesRepository, type CvFile } from './candidates.repository';
 
 const RESET_TOKEN_TTL_MS = 60 * 60 * 1000;
+const TELEGRAM_LINK_TTL_MS = 30 * 60 * 1000;
 
 @Injectable()
 export class CandidatesService {
@@ -83,7 +84,11 @@ export class CandidatesService {
   async createTelegramLink(id: number) {
     const candidate = await this.findOrThrow(id);
     const token = randomBytes(24).toString('hex');
-    await this.candidatesRepository.setTelegramLinkToken(id, token);
+    await this.candidatesRepository.setTelegramLinkToken(
+      id,
+      token,
+      new Date(Date.now() + TELEGRAM_LINK_TTL_MS),
+    );
     const botUsername = this.configService.get<string>('TELEGRAM_BOT_USERNAME');
     const url = botUsername
       ? `https://t.me/${botUsername}?start=${token}`
@@ -94,8 +99,12 @@ export class CandidatesService {
   async completeTelegramLink(token: string, chatId: string) {
     const candidate =
       await this.candidatesRepository.findByTelegramLinkToken(token);
-    if (!candidate) {
-      throw new NotFoundException('Token de vinculación inválido');
+    if (
+      !candidate ||
+      !candidate.telegramLinkTokenExpiresAt ||
+      candidate.telegramLinkTokenExpiresAt.getTime() < Date.now()
+    ) {
+      throw new NotFoundException('Token de vinculación inválido o expirado');
     }
 
     const previous =

@@ -34,6 +34,7 @@ function makeCandidate(overrides: Record<string, unknown> = {}) {
     notifyByTelegram: false,
     telegramChatId: null,
     telegramLinkToken: null,
+    telegramLinkTokenExpiresAt: null,
     createdAt: new Date(),
     updatedAt: new Date(),
     ...overrides,
@@ -183,13 +184,19 @@ describe('CandidatesService — preferencias y vinculación de Telegram', () => 
   it('genera un enlace de vinculación con el usuario del bot', async () => {
     const candidate = makeCandidate();
     const stored: string[] = [];
+    const expirations: Date[] = [];
 
     const service = buildService(
       {
         findById: () => Promise.resolve(candidate),
-        setTelegramLinkToken: (_id: number, token: string) => {
+        setTelegramLinkToken: (_id: number, token: string, expiresAt: Date) => {
           stored.push(token);
-          return Promise.resolve({ ...candidate, telegramLinkToken: token });
+          expirations.push(expiresAt);
+          return Promise.resolve({
+            ...candidate,
+            telegramLinkToken: token,
+            telegramLinkTokenExpiresAt: expiresAt,
+          });
         },
       },
       undefined,
@@ -202,10 +209,15 @@ describe('CandidatesService — preferencias y vinculación de Telegram', () => 
     expect(link.url).toBe(`https://t.me/EduScoutBot?start=${link.code}`);
     expect(link.linked).toBe(false);
     expect(stored).toEqual([link.code]);
+    expect(expirations[0].getTime()).toBeGreaterThan(Date.now());
   });
 
   it('vincula el chat al postulante y desvincula al dueño anterior del chat', async () => {
-    const candidate = makeCandidate({ id: 1, name: 'Roberto Díaz' });
+    const candidate = makeCandidate({
+      id: 1,
+      name: 'Roberto Díaz',
+      telegramLinkTokenExpiresAt: new Date(Date.now() + 60 * 1000),
+    });
     const previous = makeCandidate({ id: 2, telegramChatId: '555' });
     const unlinked: number[] = [];
     const linked: Array<[number, string]> = [];
@@ -239,6 +251,28 @@ describe('CandidatesService — preferencias y vinculación de Telegram', () => 
     await expect(
       service.completeTelegramLink('token-malo', '555'),
     ).rejects.toThrow(NotFoundException);
+  });
+
+  it('rechaza un token de vinculación expirado', async () => {
+    const candidate = makeCandidate({
+      id: 1,
+      telegramLinkToken: 'tok-expirado',
+      telegramLinkTokenExpiresAt: new Date(Date.now() - 1000),
+    });
+    let linkCalled = false;
+
+    const service = buildService({
+      findByTelegramLinkToken: () => Promise.resolve(candidate),
+      linkTelegram: () => {
+        linkCalled = true;
+        return Promise.resolve(candidate);
+      },
+    });
+
+    await expect(
+      service.completeTelegramLink('tok-expirado', '555'),
+    ).rejects.toThrow(NotFoundException);
+    expect(linkCalled).toBe(false);
   });
 
   it('desvincula por chat y retorna false si no hay coincidencia', async () => {

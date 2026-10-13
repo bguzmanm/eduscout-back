@@ -114,6 +114,7 @@ export const candidates = pgTable('candidates', {
   notifyByTelegram: boolean('notify_by_telegram').notNull().default(false),
   telegramChatId: varchar('telegram_chat_id', { length: 32 }),
   telegramLinkToken: varchar('telegram_link_token', { length: 64 }),
+  telegramLinkTokenExpiresAt: timestamp('telegram_link_token_expires_at'),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 });
