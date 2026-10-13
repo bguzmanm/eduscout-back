@@ -1,4 +1,5 @@
 import {
+  IsBoolean,
   IsEmail,
   IsNotEmpty,
   IsOptional,
@@ -54,6 +55,24 @@ export class UpdateCandidateDto {
   @IsString()
   @MaxLength(50)
   phone?: string;
+
+  @ApiProperty({
+    required: false,
+    description: 'Recibir notificaciones de alertas por correo electrónico',
+    example: true,
+  })
+  @IsOptional()
+  @IsBoolean()
+  notifyByEmail?: boolean;
+
+  @ApiProperty({
+    required: false,
+    description: 'Recibir notificaciones de alertas por Telegram',
+    example: false,
+  })
+  @IsOptional()
+  @IsBoolean()
+  notifyByTelegram?: boolean;
 }
 
 export class ChangePasswordCandidateDto {
@@ -124,11 +143,41 @@ export class CandidateProfileDto {
     uploadedAt: Date | null;
   };
 
+  @ApiProperty({
+    description: 'Preferencias de notificación del postulante',
+    example: { email: true, telegram: false, telegramLinked: false },
+  })
+  notifications: {
+    email: boolean;
+    telegram: boolean;
+    telegramLinked: boolean;
+  };
+
   @ApiProperty({ description: 'Fecha de creación' })
   createdAt: Date;
 
   @ApiProperty({ description: 'Fecha de última actualización' })
   updatedAt: Date;
+}
+
+export class TelegramLinkResponseDto {
+  @ApiProperty({
+    description: 'Enlace para vincular la cuenta con el bot de Telegram',
+    example: 'https://t.me/EduScoutBot?start=abc123',
+  })
+  url: string;
+
+  @ApiProperty({
+    description: 'Código de vinculación incluido en el enlace',
+    example: 'abc123',
+  })
+  code: string;
+
+  @ApiProperty({
+    description: 'Indica si el postulante ya tiene un Telegram vinculado',
+    example: false,
+  })
+  linked: boolean;
 }
 
 export class CandidateAuthResponseDto {

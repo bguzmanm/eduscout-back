@@ -2,6 +2,7 @@ import {
   BadRequestException,
   Body,
   Controller,
+  Delete,
   Get,
   NotFoundException,
   Patch,
@@ -96,6 +97,28 @@ export class CandidatesController {
   @ApiResponse({ status: 401, description: 'No autorizado.' })
   async updateMe(@Req() request: Request, @Body() dto: UpdateCandidateDto) {
     return this.candidatesService.updateProfile(getCandidateId(request), dto);
+  }
+
+  @Post('me/telegram/link')
+  @ApiBearerAuth()
+  @UseGuards(CandidateAuthGuard)
+  @ApiOperation({
+    summary: 'Generar un enlace para vincular la cuenta con Telegram',
+  })
+  @ApiResponse({ status: 201, description: 'Enlace de vinculación generado.' })
+  @ApiResponse({ status: 401, description: 'No autorizado.' })
+  async createTelegramLink(@Req() request: Request) {
+    return this.candidatesService.createTelegramLink(getCandidateId(request));
+  }
+
+  @Delete('me/telegram/link')
+  @ApiBearerAuth()
+  @UseGuards(CandidateAuthGuard)
+  @ApiOperation({ summary: 'Desvincular la cuenta de Telegram' })
+  @ApiResponse({ status: 200, description: 'Telegram desvinculado con éxito.' })
+  @ApiResponse({ status: 401, description: 'No autorizado.' })
+  async unlinkTelegram(@Req() request: Request) {
+    return this.candidatesService.unlinkTelegram(getCandidateId(request));
   }
 
   @Post('me/password')

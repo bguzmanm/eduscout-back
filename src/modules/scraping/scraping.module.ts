@@ -4,10 +4,11 @@ import { SourcesModule } from '../sources/sources.module';
 import { JobsModule } from '../jobs/jobs.module';
 import { AuthModule } from '../auth/auth.module';
 import { AlertsModule } from '../alerts/alerts.module';
+import { CandidatesModule } from '../candidates/candidates.module';
+import { TelegramModule } from '../telegram/telegram.module';
 import { ScrapingService } from './scraping.service';
 import { ScrapingController } from './scraping.controller';
 import { ScrapingScheduler } from './scraping.scheduler';
-import { TelegramService } from './telegram.service';
 import { TelegramBotService } from './telegram-bot.service';
 
 @Module({
@@ -17,12 +18,13 @@ import { TelegramBotService } from './telegram-bot.service';
     JobsModule,
     AuthModule,
     AlertsModule,
+    CandidatesModule,
+    TelegramModule,
   ],
   controllers: [ScrapingController],
   providers: [
     ScrapingService,
     ScrapingScheduler,
-    TelegramService,
     TelegramBotService,
   ],
 })

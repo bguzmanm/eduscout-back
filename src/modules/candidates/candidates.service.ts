@@ -63,14 +63,66 @@ export class CandidatesService {
 
   async updateProfile(
     id: number,
-    data: { name?: string; phone?: string | null },
+    data: {
+      name?: string;
+      phone?: string | null;
+      notifyByEmail?: boolean;
+      notifyByTelegram?: boolean;
+    },
   ) {
     const candidate = await this.findOrThrow(id);
     const updated = await this.candidatesRepository.update(id, {
       name: data.name?.trim() || candidate.name,
       phone: data.phone === undefined ? candidate.phone : data.phone,
+      notifyByEmail: data.notifyByEmail ?? candidate.notifyByEmail,
+      notifyByTelegram: data.notifyByTelegram ?? candidate.notifyByTelegram,
     });
     return this.toProfile(updated);
+  }
+
+  async createTelegramLink(id: number) {
+    const candidate = await this.findOrThrow(id);
+    const token = randomBytes(24).toString('hex');
+    await this.candidatesRepository.setTelegramLinkToken(id, token);
+    const botUsername = this.configService.get<string>('TELEGRAM_BOT_USERNAME');
+    const url = botUsername
+      ? `https://t.me/${botUsername}?start=${token}`
+      : '';
+    return { url, code: token, linked: Boolean(candidate.telegramChatId) };
+  }
+
+  async completeTelegramLink(token: string, chatId: string) {
+    const candidate =
+      await this.candidatesRepository.findByTelegramLinkToken(token);
+    if (!candidate) {
+      throw new NotFoundException('Token de vinculación inválido');
+    }
+
+    const previous =
+      await this.candidatesRepository.findByTelegramChatId(chatId);
+    if (previous && previous.id !== candidate.id) {
+      await this.candidatesRepository.unlinkTelegram(previous.id);
+    }
+
+    const updated = await this.candidatesRepository.linkTelegram(
+      candidate.id,
+      chatId,
+    );
+    return { name: updated.name };
+  }
+
+  async unlinkTelegram(id: number) {
+    await this.findOrThrow(id);
+    await this.candidatesRepository.unlinkTelegram(id);
+    return { message: 'Telegram desvinculado con éxito' };
+  }
+
+  async unlinkTelegramByChatId(chatId: string) {
+    const candidate =
+      await this.candidatesRepository.findByTelegramChatId(chatId);
+    if (!candidate) return false;
+    await this.candidatesRepository.unlinkTelegram(candidate.id);
+    return true;
   }
 
   async changePassword(id: number, data: {
@@ -220,6 +272,9 @@ Si no has solicitado este cambio, no es necesario hacer nada: tu contraseña seg
     cvSizeBytes: number | null;
     cvStatus: string;
     cvUploadedAt: Date | null;
+    notifyByEmail: boolean;
+    notifyByTelegram: boolean;
+    telegramChatId: string | null;
     createdAt: Date;
     updatedAt: Date;
   }) {
@@ -234,6 +289,11 @@ Si no has solicitado este cambio, no es necesario hacer nada: tu contraseña seg
         sizeBytes: candidate.cvSizeBytes,
         status: candidate.cvStatus,
         uploadedAt: candidate.cvUploadedAt,
+      },
+      notifications: {
+        email: candidate.notifyByEmail,
+        telegram: candidate.notifyByTelegram,
+        telegramLinked: Boolean(candidate.telegramChatId),
       },
       createdAt: candidate.createdAt,
       updatedAt: candidate.updatedAt,

@@ -110,6 +110,10 @@ export const candidates = pgTable('candidates', {
   cvUploadedAt: timestamp('cv_uploaded_at'),
   resetTokenHash: varchar('reset_token_hash', { length: 64 }),
   resetTokenExpiresAt: timestamp('reset_token_expires_at'),
+  notifyByEmail: boolean('notify_by_email').notNull().default(true),
+  notifyByTelegram: boolean('notify_by_telegram').notNull().default(false),
+  telegramChatId: varchar('telegram_chat_id', { length: 32 }),
+  telegramLinkToken: varchar('telegram_link_token', { length: 64 }),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 });

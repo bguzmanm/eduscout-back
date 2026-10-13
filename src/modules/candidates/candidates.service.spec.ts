@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'bun:test';
 import { createHash } from 'node:crypto';
 import { ConfigService } from '@nestjs/config';
-import { UnauthorizedException } from '@nestjs/common';
+import { NotFoundException, UnauthorizedException } from '@nestjs/common';
 import { CandidatesService } from './candidates.service';
 import { verifyPassword } from '../../common/utils/password';
 import type { CandidatesRepository } from './candidates.repository';
@@ -30,6 +30,10 @@ function makeCandidate(overrides: Record<string, unknown> = {}) {
     cvUploadedAt: null,
     resetTokenHash: null,
     resetTokenExpiresAt: null,
+    notifyByEmail: true,
+    notifyByTelegram: false,
+    telegramChatId: null,
+    telegramLinkToken: null,
     createdAt: new Date(),
     updatedAt: new Date(),
     ...overrides,
@@ -43,11 +47,12 @@ function hashOf(token: string) {
 function buildService(
   repo: Record<string, unknown>,
   mailer?: { sendMail: (message: MailSnapshot) => Promise<boolean> },
+  env: Record<string, string> = {},
 ) {
   return new CandidatesService(
     repo as unknown as CandidatesRepository,
     {} as unknown as AuthService,
-    new ConfigService({ FRONTEND_URL: 'https://eduscout.cl' }),
+    new ConfigService({ FRONTEND_URL: 'https://eduscout.cl', ...env }),
     (mailer ?? { sendMail: () => Promise.resolve(false) }) as unknown as MailerService,
   );
 }
@@ -145,5 +150,130 @@ describe('CandidatesService — recuperación de contraseña', () => {
     await expect(
       service.resetPassword('token-fake', 'nueva-clave-9'),
     ).rejects.toThrow(UnauthorizedException);
+  });
+});
+
+describe('CandidatesService — preferencias y vinculación de Telegram', () => {
+  it('actualiza las preferencias de notificación y las refleja en el perfil', async () => {
+    const candidate = makeCandidate();
+    const captured: RepoUpdateData[] = [];
+
+    const service = buildService({
+      findById: () => Promise.resolve(candidate),
+      update: (_id: number, data: RepoUpdateData) => {
+        captured.push(data);
+        return Promise.resolve({ ...candidate, ...data });
+      },
+    });
+
+    const profile = await service.updateProfile(1, {
+      notifyByEmail: false,
+      notifyByTelegram: true,
+    });
+
+    expect(captured[0].notifyByEmail).toBe(false);
+    expect(captured[0].notifyByTelegram).toBe(true);
+    expect(profile.notifications).toEqual({
+      email: false,
+      telegram: true,
+      telegramLinked: false,
+    });
+  });
+
+  it('genera un enlace de vinculación con el usuario del bot', async () => {
+    const candidate = makeCandidate();
+    const stored: string[] = [];
+
+    const service = buildService(
+      {
+        findById: () => Promise.resolve(candidate),
+        setTelegramLinkToken: (_id: number, token: string) => {
+          stored.push(token);
+          return Promise.resolve({ ...candidate, telegramLinkToken: token });
+        },
+      },
+      undefined,
+      { TELEGRAM_BOT_USERNAME: 'EduScoutBot' },
+    );
+
+    const link = await service.createTelegramLink(1);
+
+    expect(link.code).toMatch(/^[0-9a-f]{48}$/);
+    expect(link.url).toBe(`https://t.me/EduScoutBot?start=${link.code}`);
+    expect(link.linked).toBe(false);
+    expect(stored).toEqual([link.code]);
+  });
+
+  it('vincula el chat al postulante y desvincula al dueño anterior del chat', async () => {
+    const candidate = makeCandidate({ id: 1, name: 'Roberto Díaz' });
+    const previous = makeCandidate({ id: 2, telegramChatId: '555' });
+    const unlinked: number[] = [];
+    const linked: Array<[number, string]> = [];
+
+    const service = buildService({
+      findByTelegramLinkToken: (token: string) =>
+        Promise.resolve(token === 'tok-valido' ? candidate : undefined),
+      findByTelegramChatId: () => Promise.resolve(previous),
+      unlinkTelegram: (id: number) => {
+        unlinked.push(id);
+        return Promise.resolve({ ...previous, telegramChatId: null });
+      },
+      linkTelegram: (id: number, chatId: string) => {
+        linked.push([id, chatId]);
+        return Promise.resolve({ ...candidate, telegramChatId: chatId });
+      },
+    });
+
+    const result = await service.completeTelegramLink('tok-valido', '555');
+
+    expect(result).toEqual({ name: 'Roberto Díaz' });
+    expect(unlinked).toEqual([2]);
+    expect(linked).toEqual([[1, '555']]);
+  });
+
+  it('rechaza un token de vinculación inválido', async () => {
+    const service = buildService({
+      findByTelegramLinkToken: () => Promise.resolve(undefined),
+    });
+
+    await expect(
+      service.completeTelegramLink('token-malo', '555'),
+    ).rejects.toThrow(NotFoundException);
+  });
+
+  it('desvincula por chat y retorna false si no hay coincidencia', async () => {
+    const candidate = makeCandidate({ id: 1, telegramChatId: '555' });
+    const unlinked: number[] = [];
+
+    const service = buildService({
+      findByTelegramChatId: (chatId: string) =>
+        Promise.resolve(chatId === '555' ? candidate : undefined),
+      unlinkTelegram: (id: number) => {
+        unlinked.push(id);
+        return Promise.resolve({ ...candidate, telegramChatId: null });
+      },
+    });
+
+    expect(await service.unlinkTelegramByChatId('555')).toBe(true);
+    expect(await service.unlinkTelegramByChatId('000')).toBe(false);
+    expect(unlinked).toEqual([1]);
+  });
+
+  it('desvincula desde el perfil y confirma el mensaje', async () => {
+    const candidate = makeCandidate({ id: 1, telegramChatId: '555' });
+    const unlinked: number[] = [];
+
+    const service = buildService({
+      findById: () => Promise.resolve(candidate),
+      unlinkTelegram: (id: number) => {
+        unlinked.push(id);
+        return Promise.resolve({ ...candidate, telegramChatId: null });
+      },
+    });
+
+    const result = await service.unlinkTelegram(1);
+
+    expect(result.message).toContain('desvinculado');
+    expect(unlinked).toEqual([1]);
   });
 });

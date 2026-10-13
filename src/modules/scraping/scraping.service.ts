@@ -21,7 +21,7 @@ import { UvCargosAdapter } from './adapters/uv-cargos.adapter';
 import { HiringRoomAdapter } from './adapters/hiringroom.adapter';
 import { sources, scrapingRuns, type ScrapingRunSource } from '../../db/schema';
 import * as schema from '../../db/schema';
-import { TelegramService, type ScrapingRunReport } from './telegram.service';
+import { TelegramService, type ScrapingRunReport } from '../telegram/telegram.service';
 import { AlertMatchingService } from '../alerts/alert-matching.service';
 import { AlertNotifierService } from '../alerts/alert-notifier.service';
 

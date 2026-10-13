@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { AlertsRepository } from './alerts.repository';
 import { MailerService } from '../mailer/mailer.service';
+import { TelegramService } from '../telegram/telegram.service';
 
 interface DigestJob {
   matchId: number;
@@ -20,6 +21,9 @@ interface DigestAlert {
 interface DigestCandidate {
   name: string;
   email: string;
+  notifyByEmail: boolean;
+  notifyByTelegram: boolean;
+  telegramChatId: string | null;
   alerts: DigestAlert[];
 }
 
@@ -55,6 +59,7 @@ export class AlertNotifierService {
   constructor(
     private readonly alertsRepository: AlertsRepository,
     private readonly mailerService: MailerService,
+    private readonly telegramService: TelegramService,
     private readonly configService: ConfigService,
   ) {}
 
@@ -68,9 +73,9 @@ export class AlertNotifierService {
       return 0;
     }
 
-    if (!this.mailerService.isConfigured) {
+    if (!this.mailerService.isConfigured && !this.telegramService.isConfigured) {
       this.logger.warn(
-        'SMTP no configurado: no se envían notificaciones de alertas',
+        'Sin SMTP ni Telegram configurados: no se envían notificaciones de alertas',
       );
       return 0;
     }
@@ -100,16 +105,53 @@ export class AlertNotifierService {
         (acc, alert) => acc + alert.jobs.length,
         0,
       );
-      const ok = await this.mailerService.sendMail(
-        this.buildMessage(digest, totalOffers, frontendUrl),
-      );
 
-      if (ok) {
+      const wantsEmail = digest.notifyByEmail && this.mailerService.isConfigured;
+      const wantsTelegram =
+        digest.notifyByTelegram &&
+        Boolean(digest.telegramChatId) &&
+        this.telegramService.isConfigured;
+
+      if (!wantsEmail && !wantsTelegram) {
+        this.logger.warn(
+          `Postulante ${digest.email} sin canales de notificación disponibles; se omite`,
+        );
+        continue;
+      }
+
+      let delivered = false;
+
+      if (wantsEmail) {
+        const emailOk = await this.mailerService.sendMail(
+          this.buildMessage(digest, totalOffers, frontendUrl),
+        );
+        if (emailOk) delivered = true;
+        else {
+          this.logger.error(
+            `No se pudo notificar por correo al postulante ${digest.email}`,
+          );
+        }
+      }
+
+      if (wantsTelegram && digest.telegramChatId) {
+        const telegramOk = await this.telegramService.sendToChat(
+          digest.telegramChatId,
+          this.buildTelegramMessage(digest, totalOffers, frontendUrl),
+        );
+        if (telegramOk) delivered = true;
+        else {
+          this.logger.error(
+            `No se pudo notificar por Telegram al postulante ${digest.email}`,
+          );
+        }
+      }
+
+      if (delivered) {
         sentCount++;
-        sentIds.push(...digest.alerts.flatMap((alert) => alert.jobs.map((j) => j.matchId)));
-      } else {
-        this.logger.error(
-          `No se pudo notificar al postulante ${digest.email}`,
+        sentIds.push(
+          ...digest.alerts.flatMap((alert) =>
+            alert.jobs.map((j) => j.matchId),
+          ),
         );
       }
 
@@ -119,7 +161,7 @@ export class AlertNotifierService {
     await this.alertsRepository.markNotified(sentIds);
 
     this.logger.log(
-      `${sentCount} notificaciones de alertas enviadas por correo (${digests.length} postulantes con ofertas pendientes)`,
+      `${sentCount} notificaciones de alertas enviadas (${digests.length} postulantes con ofertas pendientes)`,
     );
     return sentCount;
   }
@@ -127,7 +169,18 @@ export class AlertNotifierService {
   private groupByCandidate(
     matches: Array<{
       id: number;
-      alert: { id: number; name: string; candidate: { id: number; name: string; email: string } };
+      alert: {
+        id: number;
+        name: string;
+        candidate: {
+          id: number;
+          name: string;
+          email: string;
+          notifyByEmail: boolean;
+          notifyByTelegram: boolean;
+          telegramChatId: string | null;
+        };
+      };
       job: {
         id: number;
         title: string;
@@ -146,6 +199,9 @@ export class AlertNotifierService {
         digest = {
           name: match.alert.candidate.name,
           email: match.alert.candidate.email,
+          notifyByEmail: match.alert.candidate.notifyByEmail,
+          notifyByTelegram: match.alert.candidate.notifyByTelegram,
+          telegramChatId: match.alert.candidate.telegramChatId,
           alerts: [],
         };
         byCandidate.set(match.alert.candidate.id, digest);
@@ -226,5 +282,44 @@ Para dejar de recibir estos correos, pausa o elimina tus alertas en EduScout.
       html,
       text,
     };
+  }
+
+  private buildTelegramMessage(
+    digest: DigestCandidate,
+    totalOffers: number,
+    frontendUrl: string,
+  ): string {
+    const offersWord =
+      totalOffers === 1 ? '1 oferta nueva' : `${totalOffers} ofertas nuevas`;
+
+    const lines: string[] = [];
+    lines.push('🔔 <b>EduScout — Nuevas ofertas</b>');
+    lines.push(
+      `Hola <b>${escapeHtml(digest.name)}</b>, encontramos ${offersWord} que calzan con tus alertas:`,
+    );
+
+    for (const alert of digest.alerts) {
+      if (alert.jobs.length === 0) continue;
+      lines.push('');
+      lines.push(`📌 <b>${escapeHtml(alert.name)}</b>`);
+      for (const job of alert.jobs) {
+        const meta = jobMeta(job);
+        lines.push(
+          `• <a href="${frontendUrl}/ofertas/${job.id}">${escapeHtml(job.title)}</a>`,
+        );
+        if (meta) lines.push(`   <i>${escapeHtml(meta)}</i>`);
+      }
+    }
+
+    lines.push('');
+    lines.push(
+      `<a href="${frontendUrl}/alertas">Revisar mis alertas en EduScout</a>`,
+    );
+    lines.push(
+      'Para dejar de recibirlas, administra tus alertas o tu preferencia en eduscout.cl → Mi perfil.',
+    );
+
+    const full = lines.join('\n');
+    return full.length > 4096 ? `${full.slice(0, 4095)}…` : full;
   }
 }

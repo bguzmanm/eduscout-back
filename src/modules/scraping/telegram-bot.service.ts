@@ -7,9 +7,10 @@ import {
 import { ConfigService } from '@nestjs/config';
 import axios from 'axios';
 import { ScrapingService } from './scraping.service';
-import { TelegramService } from './telegram.service';
+import { TelegramService } from '../telegram/telegram.service';
 import { JobsRepository } from '../jobs/repositories/jobs.repository';
 import { SourcesService } from '../sources/services/sources.service';
+import { CandidatesService } from '../candidates/candidates.service';
 
 interface TelegramUpdate {
   update_id: number;
@@ -31,17 +32,23 @@ export class TelegramBotService implements OnModuleInit, OnApplicationShutdown {
     private readonly sourcesService: SourcesService,
     private readonly jobsRepository: JobsRepository,
     private readonly telegramService: TelegramService,
+    private readonly candidatesService: CandidatesService,
   ) {
     this.botToken = this.configService.get<string>('TELEGRAM_BOT_TOKEN');
     this.chatId = this.configService.get<string>('TELEGRAM_CHAT_ID');
   }
 
   onModuleInit() {
-    if (!this.botToken || !this.chatId) {
+    if (!this.botToken) {
       this.logger.warn(
-        'Bot de Telegram no iniciado: faltan TELEGRAM_BOT_TOKEN y TELEGRAM_CHAT_ID',
+        'Bot de Telegram no iniciado: falta TELEGRAM_BOT_TOKEN',
       );
       return;
+    }
+    if (!this.chatId) {
+      this.logger.warn(
+        'TELEGRAM_CHAT_ID no configurado: los comandos de administración quedan deshabilitados (la vinculación de postulantes seguirá activa).',
+      );
     }
     void this.run();
   }
@@ -87,10 +94,11 @@ export class TelegramBotService implements OnModuleInit, OnApplicationShutdown {
     const message = update.message ?? update.edited_message;
     if (!message?.text) return;
 
-    if (message.chat.id !== Number(this.chatId)) {
-      this.logger.warn(
-        `Mensaje ignorado de chat no autorizado: ${message.chat.id}`,
-      );
+    const chatId = message.chat.id;
+    const isAdminChat = this.chatId !== undefined && chatId === Number(this.chatId);
+
+    if (!isAdminChat) {
+      await this.handleCandidateUpdate(chatId, message.text);
       return;
     }
 
@@ -129,6 +137,117 @@ export class TelegramBotService implements OnModuleInit, OnApplicationShutdown {
         '❌ Error al procesar el comando. Inténtalo de nuevo.',
       );
     }
+  }
+
+  private async handleCandidateUpdate(chatId: number, rawText: string) {
+    const chat = String(chatId);
+    const text = rawText.trim();
+    const [rawCommand, ...args] = text.split(/\s+/);
+    const command = rawCommand.toLowerCase().split('@')[0];
+
+    try {
+      switch (command) {
+        case '/start':
+          await this.linkCandidate(chat, args[0]);
+          break;
+        case '/stop':
+          await this.unlinkCandidate(chat);
+          break;
+        case '/help':
+        case '/ayuda':
+          await this.telegramService.sendToChat(chat, this.candidateHelpText());
+          break;
+        default:
+          await this.telegramService.sendToChat(chat, this.candidateWelcomeText());
+      }
+    } catch (error) {
+      this.logger.error(
+        `Error al procesar mensaje de postulante (chat ${chat}): ${(error as Error).message}`,
+      );
+      await this.telegramService.sendToChat(
+        chat,
+        '❌ Ocurrió un error al procesar tu solicitud. Inténtalo más tarde.',
+      );
+    }
+  }
+
+  private async linkCandidate(chat: string, token?: string) {
+    if (!token) {
+      await this.telegramService.sendToChat(
+        chat,
+        this.candidateWelcomeText(),
+      );
+      return;
+    }
+
+    try {
+      const { name } = await this.candidatesService.completeTelegramLink(
+        token,
+        chat,
+      );
+      await this.telegramService.sendToChat(
+        chat,
+        [
+          `✅ ¡Listo, <b>${this.escapeHtml(name)}</b>!`,
+          'Tu cuenta de EduScout quedó vinculada a este chat.',
+          'A partir de ahora recibirás aquí las alertas que tengas activas con notificación por Telegram.',
+          '',
+          'Si quieres dejar de recibirlas, envía /stop.',
+        ].join('\n'),
+      );
+    } catch {
+      await this.telegramService.sendToChat(
+        chat,
+        [
+          '❌ El enlace de vinculación no es válido.',
+          'Genera uno nuevo desde tu perfil en eduscout.cl → <b>Mis datos</b> → <b>Vincular Telegram</b>.',
+        ].join('\n'),
+      );
+    }
+  }
+
+  private async unlinkCandidate(chat: string) {
+    const unlinked =
+      await this.candidatesService.unlinkTelegramByChatId(chat);
+
+    if (unlinked) {
+      await this.telegramService.sendToChat(
+        chat,
+        '🔕 Listo, desvinculamos tu cuenta. Ya no recibirás alertas por Telegram.',
+      );
+      return;
+    }
+
+    await this.telegramService.sendToChat(
+      chat,
+      'No hay ninguna cuenta de EduScout vinculada a este chat.',
+    );
+  }
+
+  private candidateWelcomeText(): string {
+    return [
+      '👋 <b>EduScout — Alertas por Telegram</b>',
+      '',
+      'Este bot te avisa cuando aparecen ofertas de trabajo académico que coinciden con tus alertas.',
+      '',
+      'Para vincular tu cuenta, entra a tu perfil en eduscout.cl → <b>Mis datos</b> → <b>Vincular Telegram</b> y abre el enlace que aparece.',
+      '',
+      'Comandos: /help — ayuda · /stop — desvincular este chat',
+    ].join('\n');
+  }
+
+  private candidateHelpText(): string {
+    return [
+      '🤖 <b>EduScout — Ayuda</b>',
+      '',
+      'Este bot envía las alertas que configures en EduScout con notificación por Telegram.',
+      '',
+      '/start &lt;código&gt; — vincula tu cuenta con este chat',
+      '/stop — desvincula este chat',
+      '/help — esta ayuda',
+      '',
+      'Administra tus alertas y canales de notificación en eduscout.cl → <b>Mi perfil</b>.',
+    ].join('\n');
   }
 
   private async runScrape(slug?: string) {

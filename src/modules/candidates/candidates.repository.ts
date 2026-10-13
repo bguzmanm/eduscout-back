@@ -40,6 +40,44 @@ export class CandidatesRepository {
     });
   }
 
+  async findByTelegramLinkToken(
+    token: string,
+  ): Promise<CandidateRow | undefined> {
+    return this.db.query.candidates.findFirst({
+      where: eq(schema.candidates.telegramLinkToken, token),
+    });
+  }
+
+  async findByTelegramChatId(
+    chatId: string,
+  ): Promise<CandidateRow | undefined> {
+    return this.db.query.candidates.findFirst({
+      where: eq(schema.candidates.telegramChatId, chatId),
+    });
+  }
+
+  async setTelegramLinkToken(
+    id: number,
+    token: string,
+  ): Promise<CandidateRow> {
+    return this.update(id, { telegramLinkToken: token });
+  }
+
+  async linkTelegram(id: number, chatId: string): Promise<CandidateRow> {
+    return this.update(id, {
+      telegramChatId: chatId,
+      notifyByTelegram: true,
+      telegramLinkToken: null,
+    });
+  }
+
+  async unlinkTelegram(id: number): Promise<CandidateRow> {
+    return this.update(id, {
+      telegramChatId: null,
+      notifyByTelegram: false,
+    });
+  }
+
   async create(data: {
     name: string;
     email: string;

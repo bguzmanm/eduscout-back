@@ -25,6 +25,10 @@ export class TelegramService {
     this.chatId = this.configService.get<string>('TELEGRAM_CHAT_ID');
   }
 
+  get isConfigured(): boolean {
+    return Boolean(this.botToken);
+  }
+
   async sendReport(report: ScrapingRunReport): Promise<boolean> {
     if (!this.botToken || !this.chatId) {
       this.logger.warn(
@@ -36,7 +40,7 @@ export class TelegramService {
     const text = this.formatReport(report);
 
     try {
-      await this.postMessage(text);
+      await this.postMessage(this.chatId, text);
       this.logger.log(`Informe enviado a Telegram (run #${report.id})`);
       return true;
     } catch (error) {
@@ -55,29 +59,39 @@ export class TelegramService {
       return false;
     }
 
+    const ok = await this.sendToChat(this.chatId, text);
+    if (ok) this.logger.log('Mensaje enviado a Telegram');
+    return ok;
+  }
+
+  async sendToChat(chatId: string, text: string): Promise<boolean> {
+    if (!this.botToken) {
+      this.logger.warn(
+        'Telegram no configurado: falta TELEGRAM_BOT_TOKEN',
+      );
+      return false;
+    }
+
     try {
-      await this.postMessage(text);
-      this.logger.log('Mensaje enviado a Telegram');
+      await this.postMessage(chatId, text);
       return true;
     } catch (error) {
       this.logger.error(
-        `Error al enviar mensaje a Telegram: ${(error as Error).message}`,
+        `Error al enviar mensaje a Telegram (chat ${chatId}): ${(error as Error).message}`,
       );
       return false;
     }
   }
 
-  private async postMessage(text: string): Promise<void> {
-    if (!this.botToken || !this.chatId) {
-      throw new Error(
-        'Telegram no configurado: faltan TELEGRAM_BOT_TOKEN y TELEGRAM_CHAT_ID',
-      );
+  private async postMessage(chatId: string, text: string): Promise<void> {
+    if (!this.botToken) {
+      throw new Error('Telegram no configurado: falta TELEGRAM_BOT_TOKEN');
     }
 
     await axios.post(
       `https://api.telegram.org/bot${this.botToken}/sendMessage`,
       {
-        chat_id: Number(this.chatId),
+        chat_id: chatId,
         text,
         parse_mode: 'HTML',
         disable_web_page_preview: true,
