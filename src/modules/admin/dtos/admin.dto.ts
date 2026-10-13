@@ -84,6 +84,24 @@ export class AdminCandidateDto {
   cvUploadedAt: string | null;
 
   @ApiProperty({
+    description: 'Si el postulante recibe notificaciones por correo',
+    example: true,
+  })
+  notifyByEmail: boolean;
+
+  @ApiProperty({
+    description: 'Si el postulante recibe notificaciones por Telegram',
+    example: false,
+  })
+  notifyByTelegram: boolean;
+
+  @ApiProperty({
+    description: 'Si el postulante tiene su Telegram vinculado',
+    example: false,
+  })
+  telegramLinked: boolean;
+
+  @ApiProperty({
     description: 'Total de alertas creadas por el postulante',
     example: 2,
   })

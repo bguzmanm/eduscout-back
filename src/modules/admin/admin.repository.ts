@@ -50,6 +50,9 @@ export interface AdminCandidateRow {
   cvFileName: string | null;
   cvStatus: string;
   cvUploadedAt: string | null;
+  notifyByEmail: boolean;
+  notifyByTelegram: boolean;
+  telegramLinked: boolean;
   alertCount: number;
   activeAlertCount: number;
   matchCount: number;
@@ -206,6 +209,9 @@ export class AdminRepository {
         cvFileName: schema.candidates.cvFileName,
         cvStatus: schema.candidates.cvStatus,
         cvUploadedAt: schema.candidates.cvUploadedAt,
+        notifyByEmail: schema.candidates.notifyByEmail,
+        notifyByTelegram: schema.candidates.notifyByTelegram,
+        telegramChatId: schema.candidates.telegramChatId,
         createdAt: schema.candidates.createdAt,
         updatedAt: schema.candidates.updatedAt,
         alertCount: count(sql`distinct ${schema.alerts.id}`),
@@ -232,6 +238,9 @@ export class AdminRepository {
         schema.candidates.cvFileName,
         schema.candidates.cvStatus,
         schema.candidates.cvUploadedAt,
+        schema.candidates.notifyByEmail,
+        schema.candidates.notifyByTelegram,
+        schema.candidates.telegramChatId,
         schema.candidates.createdAt,
         schema.candidates.updatedAt,
       )
@@ -253,6 +262,9 @@ export class AdminRepository {
         cvFileName: row.cvFileName,
         cvStatus: row.cvStatus,
         cvUploadedAt: row.cvUploadedAt ? row.cvUploadedAt.toISOString() : null,
+        notifyByEmail: row.notifyByEmail,
+        notifyByTelegram: row.notifyByTelegram,
+        telegramLinked: Boolean(row.telegramChatId),
         alertCount: Number(row.alertCount),
         activeAlertCount: Number(row.activeAlertCount),
         matchCount: Number(row.matchCount),
