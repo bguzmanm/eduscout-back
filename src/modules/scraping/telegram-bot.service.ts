@@ -95,16 +95,23 @@ export class TelegramBotService implements OnModuleInit, OnApplicationShutdown {
     if (!message?.text) return;
 
     const chatId = message.chat.id;
-    const isAdminChat = this.chatId !== undefined && chatId === Number(this.chatId);
-
-    if (!isAdminChat) {
-      await this.handleCandidateUpdate(chatId, message.text);
-      return;
-    }
-
     const text = message.text.trim();
     const [rawCommand, ...args] = text.split(/\s+/);
-    const command = rawCommand.toLowerCase();
+    const command = rawCommand.toLowerCase().split('@')[0];
+
+    // /start y /stop pertenecen al flujo de vinculación de postulantes y no
+    // existen como comandos de administración, por lo que se atienden en
+    // cualquier chat (incluido el admin). Así el responsable del bot también
+    // puede vincular su propia cuenta para probar.
+    const isCandidateCommand = command === '/start' || command === '/stop';
+
+    const isAdminChat =
+      this.chatId !== undefined && chatId === Number(this.chatId);
+
+    if (!isAdminChat || isCandidateCommand) {
+      await this.handleCandidateUpdate(chatId, text);
+      return;
+    }
 
     try {
       switch (command) {
