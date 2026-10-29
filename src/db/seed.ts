@@ -143,6 +143,15 @@ export async function seedDatabase(db: DrizzleConnection) {
               'https://staticcdn.trabajando.cl/portal-comunidad/66f4222629ff84227c039e45/assets/logo.png',
           },
           {
+            name: 'Universidad Mayor',
+            slug: 'umayor',
+            baseUrl: 'https://umayor.trabajando.cl',
+            scraperType: 'trabajando_cl',
+            category: 'universidad_privada',
+            logoUrl:
+              'https://staticcdn.trabajando.cl/portal-comunidad/66f4222629ff84227c039bd4/assets/logo.jpg',
+          },
+          {
             name: 'UNIACC',
             slug: 'uniacc',
             baseUrl: 'https://uniacc.hiringroom.com/jobs',
@@ -179,7 +188,7 @@ export async function seedDatabase(db: DrizzleConnection) {
           },
         ])
         .returning();
-      console.log('✅ 17 fuentes creadas');
+      console.log('✅ 18 fuentes creadas');
     });
 
     console.log('✨ Seeding completado exitosamente');
