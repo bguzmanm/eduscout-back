@@ -43,6 +43,7 @@ export class AdminService {
         fewAlerts,
         manyAlerts,
       },
+      registrationsBySource: raw.registrationsBySource,
     };
   }
 

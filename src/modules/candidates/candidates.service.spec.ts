@@ -154,6 +154,78 @@ describe('CandidatesService — recuperación de contraseña', () => {
   });
 });
 
+describe('CandidatesService — atribución del registro', () => {
+  type CreateData = Parameters<CandidatesRepository['create']>[0];
+
+  function buildRegistrationService(created: CreateData[]): CandidatesService {
+    return new CandidatesService(
+      {
+        findByEmail: () => Promise.resolve(undefined),
+        create: (data: CreateData) => {
+          created.push(data);
+          return Promise.resolve(makeCandidate(data));
+        },
+      } as unknown as CandidatesRepository,
+      {
+        issueCandidateToken: () => ({ token: 'token-sesion' }),
+      } as unknown as AuthService,
+      new ConfigService({}),
+      { sendMail: () => Promise.resolve(false) } as unknown as MailerService,
+    );
+  }
+
+  it('normaliza el canal de adquisición antes de persistirlo', async () => {
+    const created: CreateData[] = [];
+    const service = buildRegistrationService(created);
+
+    await service.register({
+      name: '  Ana Pérez  ',
+      email: '  Ana@Mail.com ',
+      password: 'clave-segura-1',
+      acquisitionSource: '  Google ',
+      acquisitionMedium: ' Organic ',
+      acquisitionCampaign: 'Lanzamiento Alertas 2026',
+      acquisitionReferrer: 'https://www.google.com/search?q=concurso+docente',
+    });
+
+    expect(created[0]).toMatchObject({
+      name: 'Ana Pérez',
+      email: 'ana@mail.com',
+      acquisitionSource: 'google',
+      acquisitionMedium: 'organic',
+      acquisitionCampaign: 'lanzamiento alertas 2026',
+      acquisitionReferrer: 'www.google.com',
+    });
+  });
+
+  it('guarda null cuando no hay datos y respeta el largo máximo', async () => {
+    const created: CreateData[] = [];
+    const service = buildRegistrationService(created);
+
+    await service.register({
+      name: 'Ana Pérez',
+      email: 'ana@mail.com',
+      password: 'clave-segura-1',
+      acquisitionSource: '   ',
+      acquisitionMedium: '',
+      acquisitionReferrer: undefined,
+    });
+    await service.register({
+      name: 'Beto Silva',
+      email: 'beto@mail.com',
+      password: 'clave-segura-1',
+      acquisitionSource: 'x'.repeat(150),
+      acquisitionReferrer: 'facebook',
+    });
+
+    expect(created[0].acquisitionSource).toBeNull();
+    expect(created[0].acquisitionMedium).toBeNull();
+    expect(created[0].acquisitionReferrer).toBeNull();
+    expect(created[1].acquisitionSource).toHaveLength(100);
+    expect(created[1].acquisitionReferrer).toBe('facebook');
+  });
+});
+
 describe('CandidatesService — preferencias y vinculación de Telegram', () => {
   it('actualiza las preferencias de notificación y las refleja en el perfil', async () => {
     const candidate = makeCandidate();

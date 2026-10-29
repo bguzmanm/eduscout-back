@@ -28,6 +28,47 @@ export class RegisterCandidateDto {
   @MaxLength(100)
   @Matches(/[A-Za-z]/, { message: 'La contraseña debe incluir letras' })
   password: string;
+
+  @ApiProperty({
+    required: false,
+    description:
+      'Canal de adquisición (utm_source) capturado en el navegador. Ej: google, facebook, telegram',
+    example: 'google',
+  })
+  @IsOptional()
+  @IsString()
+  @MaxLength(100)
+  acquisitionSource?: string;
+
+  @ApiProperty({
+    required: false,
+    description: 'Medio de adquisición (utm_medium)',
+    example: 'organic',
+  })
+  @IsOptional()
+  @IsString()
+  @MaxLength(100)
+  acquisitionMedium?: string;
+
+  @ApiProperty({
+    required: false,
+    description: 'Campaña de adquisición (utm_campaign)',
+    example: 'lanzamiento-alertas',
+  })
+  @IsOptional()
+  @IsString()
+  @MaxLength(150)
+  acquisitionCampaign?: string;
+
+  @ApiProperty({
+    required: false,
+    description: 'Sitio de referencia desde el que llegó el postulante',
+    example: 'www.google.com',
+  })
+  @IsOptional()
+  @IsString()
+  @MaxLength(255)
+  acquisitionReferrer?: string;
 }
 
 export class LoginCandidateDto {

@@ -87,6 +87,10 @@ export class CandidatesRepository {
     name: string;
     email: string;
     passwordHash: string;
+    acquisitionSource?: string | null;
+    acquisitionMedium?: string | null;
+    acquisitionCampaign?: string | null;
+    acquisitionReferrer?: string | null;
   }): Promise<CandidateRow> {
     const [candidate] = await this.db
       .insert(schema.candidates)

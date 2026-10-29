@@ -23,6 +23,10 @@ function makeRepository(
         { candidateId: 2, alertCount: 2 },
         { candidateId: 3, alertCount: 4 },
       ],
+      registrationsBySource: [
+        { source: 'google', count: 10 },
+        { source: 'sin dato', count: 6 },
+      ],
       ...overrides,
     }),
     listCandidates,
@@ -52,6 +56,10 @@ describe('AdminService', () => {
       fewAlerts: 2,
       manyAlerts: 1,
     });
+    expect(stats.registrationsBySource).toEqual([
+      { source: 'google', count: 10 },
+      { source: 'sin dato', count: 6 },
+    ]);
   });
 
   it('responde correctamente cuando ningún candidato tiene alertas', async () => {

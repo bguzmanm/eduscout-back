@@ -15,6 +15,45 @@ import { CandidatesRepository, type CvFile } from './candidates.repository';
 const RESET_TOKEN_TTL_MS = 60 * 60 * 1000;
 const TELEGRAM_LINK_TTL_MS = 30 * 60 * 1000;
 
+// Sanea un valor de atribución: recorta, normaliza a minúsculas, quita
+// caracteres de control y limita el largo. Null cuando no aporta información.
+function normalizeAttributionValue(
+  value: string | undefined,
+  maxLength: number,
+): string | null {
+  if (!value) return null;
+  const clean = Array.from(value)
+    .filter((char) => {
+      const code = char.charCodeAt(0);
+      return code > 0x1f && code !== 0x7f;
+    })
+    .join('')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .toLowerCase();
+  if (!clean) return null;
+  return clean.slice(0, maxLength);
+}
+
+// El referrer puede llegar como URL completa; sólo interesa el dominio, que es
+// lo que permite agrupar registros por canal.
+function normalizeReferrer(value: string | undefined): string | null {
+  const clean = normalizeAttributionValue(value, 255);
+  if (!clean) return null;
+  try {
+    return new URL(clean.includes('://') ? clean : `https://${clean}`).host;
+  } catch {
+    return clean;
+  }
+}
+
+export interface RegistrationAttribution {
+  acquisitionSource?: string;
+  acquisitionMedium?: string;
+  acquisitionCampaign?: string;
+  acquisitionReferrer?: string;
+}
+
 @Injectable()
 export class CandidatesService {
   private readonly logger = new Logger(CandidatesService.name);
@@ -26,7 +65,11 @@ export class CandidatesService {
     private readonly mailerService: MailerService,
   ) {}
 
-  async register(data: { name: string; email: string; password: string }) {
+  async register(data: {
+    name: string;
+    email: string;
+    password: string;
+  } & RegistrationAttribution) {
     const email = data.email.trim().toLowerCase();
     const existing = await this.candidatesRepository.findByEmail(email);
     if (existing) {
@@ -40,6 +83,7 @@ export class CandidatesService {
       name: data.name.trim(),
       email,
       passwordHash,
+      ...this.normalizeAttribution(data),
     });
 
     const session = this.authService.issueCandidateToken(candidate.id);
@@ -235,6 +279,18 @@ Si no has solicitado este cambio, no es necesario hacer nada: tu contraseña seg
 
   private hashResetToken(token: string): string {
     return createHash('sha256').update(token).digest('hex');
+  }
+
+  private normalizeAttribution(data: RegistrationAttribution) {
+    return {
+      acquisitionSource: normalizeAttributionValue(data.acquisitionSource, 100),
+      acquisitionMedium: normalizeAttributionValue(data.acquisitionMedium, 100),
+      acquisitionCampaign: normalizeAttributionValue(
+        data.acquisitionCampaign,
+        150,
+      ),
+      acquisitionReferrer: normalizeReferrer(data.acquisitionReferrer),
+    };
   }
 
   async uploadCv(id: number, file: CvFile) {

@@ -115,6 +115,12 @@ export const candidates = pgTable('candidates', {
   telegramChatId: varchar('telegram_chat_id', { length: 32 }),
   telegramLinkToken: varchar('telegram_link_token', { length: 64 }),
   telegramLinkTokenExpiresAt: timestamp('telegram_link_token_expires_at'),
+  // Atribución del registro: canal por el que llegó el postulante (utm_* o
+  // dominio de referencia). Se captura en el primer registro, es inmutable.
+  acquisitionSource: varchar('acquisition_source', { length: 100 }),
+  acquisitionMedium: varchar('acquisition_medium', { length: 100 }),
+  acquisitionCampaign: varchar('acquisition_campaign', { length: 150 }),
+  acquisitionReferrer: varchar('acquisition_referrer', { length: 255 }),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 });

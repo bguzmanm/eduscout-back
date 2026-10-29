@@ -23,6 +23,11 @@ export interface AlertsPerCandidate {
   alertCount: number;
 }
 
+export interface RegistrationsBySource {
+  source: string;
+  count: number;
+}
+
 export interface ListCandidatesFilters {
   q?: string;
   hasCv?: boolean;
@@ -76,6 +81,7 @@ export interface CandidateStatsRaw {
   registeredLast7d: number;
   registeredLast30d: number;
   alertsPerCandidate: AlertsPerCandidate[];
+  registrationsBySource: RegistrationsBySource[];
 }
 
 @Injectable()
@@ -100,6 +106,7 @@ export class AdminRepository {
       last7Result,
       last30Result,
       alertsByCandidate,
+      registrationsBySource,
     ] = await Promise.all([
       this.db.select({ n: count() }).from(schema.candidates),
       this.db
@@ -140,6 +147,14 @@ export class AdminRepository {
         })
         .from(schema.alerts)
         .groupBy(schema.alerts.candidateId),
+      this.db
+        .select({
+          source: schema.candidates.acquisitionSource,
+          n: count(),
+        })
+        .from(schema.candidates)
+        .groupBy(schema.candidates.acquisitionSource)
+        .orderBy(desc(count())),
     ]);
 
     return {
@@ -155,6 +170,10 @@ export class AdminRepository {
       alertsPerCandidate: alertsByCandidate.map((row) => ({
         candidateId: row.candidateId,
         alertCount: Number(row.alertCount),
+      })),
+      registrationsBySource: registrationsBySource.map((row) => ({
+        source: row.source ?? 'sin dato',
+        count: Number(row.n),
       })),
     };
   }

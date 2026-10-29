@@ -244,6 +244,20 @@ export class AlertsDistributionDto {
   manyAlerts: number;
 }
 
+export class RegistrationsBySourceDto {
+  @ApiProperty({
+    description: 'Canal de adquisición registrado (utm_source o dominio de referencia)',
+    example: 'google',
+  })
+  source: string;
+
+  @ApiProperty({
+    description: 'Cantidad de postulantes que llegaron por ese canal',
+    example: 12,
+  })
+  count: number;
+}
+
 export class CandidateStatsDto {
   @ApiProperty({
     description: 'Total de perfiles de candidatos creados',
@@ -322,4 +336,11 @@ export class CandidateStatsDto {
     type: AlertsDistributionDto,
   })
   alertsDistribution: AlertsDistributionDto;
+
+  @ApiProperty({
+    description: 'Registros agrupados por canal de adquisición',
+    type: RegistrationsBySourceDto,
+    isArray: true,
+  })
+  registrationsBySource: RegistrationsBySourceDto[];
 }
