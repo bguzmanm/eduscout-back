@@ -2,6 +2,7 @@ import { IsOptional, IsString, IsDateString } from 'class-validator';
 import { ApiExtraModels, ApiProperty, getSchemaPath } from '@nestjs/swagger';
 import { PaginationDto } from '../../../common/dto/pagination.dto';
 import type { PaginationMeta } from '../../../common/types';
+import { AddressLocationDto } from './job-location.dto';
 
 export class SearchJobsDto extends PaginationDto {
   @ApiProperty({
@@ -38,192 +39,276 @@ export class SearchJobsDto extends PaginationDto {
 
   @ApiProperty({
     required: false,
-    description: 'Filtrar ofertas publicadas desde esta fecha (ISO 8601)',
-  })
-  @IsOptional()
-  @IsDateString()
-  fromDate?: string;
-
-  @ApiProperty({
-    required: false,
-    description: 'Filtro por tipo de institución (ej. universidad_publica)',
+    description: 'Término de búsqueda para filtrar ofertas',
   })
   @IsOptional()
   @IsString()
   category?: string;
+
+  @ApiProperty({ required: false, description: 'Páginas' })
+  @IsOptional()
+  page?: number;
+
+  @ApiProperty({ required: false, description: 'Límites' })
+  @IsOptional()
+  limit?: number;
+
+  // Campos adicionales para JSON-LD (JSON-LD Metadata fields)
+  @ApiProperty({ required: false, description: 'Código postal (ej. "5312084")' })
+  @IsOptional()
+  zipCode?: string;
+
+  @ApiProperty({ required: false, description: 'Comuna (ej. "Providencia")' })
+  @IsOptional()
+  neighborhood?: string;
+
+  @ApiProperty({ required: false, description: 'Salario base (valor mínimo o único)' })
+  @IsOptional()
+  minimumBaseSalary?: number;
+
+  // Alias para compatibilidad con jobType (usado en el scraper)
+  @ApiProperty({ required: false, deprecated: 'Use category instead' })
+  @IsOptional()
+  jobType?: string;
+
+  // Alias para compatibilidad con fromDate (ISO 8601)
+  @ApiProperty({ required: false, deprecated: 'Use fromDate instead' })
+  @IsOptional()
+  fromDate?: string;
 }
 
 export class JobResponseDto {
   @ApiProperty({ example: 1, description: 'ID único de la oferta' })
-  id: number;
+  id?: number;
 
   @ApiProperty({ example: 1, description: 'ID de la fuente' })
-  sourceId: number;
+  sourceId?: number;
 
-  @ApiProperty({
-    example: 'MD2624',
-    description: 'ID externo de la oferta en el sitio original',
-  })
-  externalId: string;
+  @ApiProperty({ example: 'MD2624', description: 'ID externo de la oferta en el sitio original' })
+  externalId?: string;
 
-  @ApiProperty({
-    example: 'Profesor Asistente en Biología',
-    description: 'Título del puesto',
-  })
-  title: string;
+  @ApiProperty({ example: 'Profesor Asistente en Biología', description: 'Título del puesto' })
+  title?: string;
 
-  @ApiProperty({
-    example: 'Universidad de Chile',
-    description: 'Nombre de la institución',
-    nullable: true,
-  })
-  company: string | null;
+  @ApiProperty({ example: 'Universidad de Chile', description: 'Nombre de la institución', nullable: true })
+  company?: string | null;
 
-  @ApiProperty({
-    example: 'Facultad de Medicina',
-    description: 'Departamento o facultad',
-    nullable: true,
-  })
-  department: string | null;
+  @ApiProperty({ example: 'Facultad de Medicina', description: 'Departamento o facultad', nullable: true })
+  department?: string | null;
 
-  @ApiProperty({
-    example: 'Santiago, Metropolitana',
-    description: 'Ubicación del puesto',
-    nullable: true,
-  })
-  location: string | null;
+  @ApiProperty({ example: 'Santiago, Metropolitana', description: 'Ubicación del puesto', nullable: true })
+  location?: string | null;
 
-  @ApiProperty({
-    example: 'Metropolitana',
-    description: 'Región',
-    nullable: true,
-  })
-  region: string | null;
+  @ApiProperty({ example: 'Metropolitana', description: 'Región', nullable: true })
+  region?: string | null;
 
-  @ApiProperty({
-    example: 'Jornada Completa',
-    description: 'Tipo de jornada',
-    nullable: true,
-  })
-  jobType: string | null;
+  @ApiProperty({ example: 'Jornada Completa', description: 'Tipo de jornada', nullable: true })
+  jobType?: string | null;
 
-  @ApiProperty({
-    example: 'Buscamos un docente con experiencia...',
-    description: 'Descripción del puesto',
-    nullable: true,
-  })
-  description: string | null;
+  @ApiProperty({ example: 'Buscamos un docente con experiencia...', description: 'Descripción del puesto', nullable: true })
+  description?: string | null;
 
-  @ApiProperty({
-    example: 'Doctorado en el área correspondiente',
-    description: 'Requisitos del puesto',
-    nullable: true,
-  })
-  requirements: string | null;
+  @ApiProperty({ example: 'Doctorado en el área', description: 'Requisitos del puesto', nullable: true })
+  requirements?: string | null;
 
-  @ApiProperty({
-    example: '$2.000.000 - $3.000.000 CLP',
-    description: 'Rango salarial',
-    nullable: true,
-  })
-  salaryRange: string | null;
+  @ApiProperty({ example: '$2.000.000 - $3.000.000 CLP', description: 'Rango salarial', nullable: true })
+  salaryRange?: string | null;
 
-  @ApiProperty({
-    example: '2026-09-01T10:00:00.000Z',
-    description: 'Fecha de publicación',
-    nullable: true,
-  })
-  publishedAt: Date | null;
+  @ApiProperty({ example: '2026-09-01T10:00:00.000Z', description: 'Fecha de publicación', nullable: true })
+  publishedAt?: Date | null;
 
-  @ApiProperty({
-    example: '2026-10-01T23:59:59.000Z',
-    description: 'Fecha límite de postulación',
-    nullable: true,
-  })
-  deadline: Date | null;
+  @ApiProperty({ example: '2026-10-01T23:59:59.000Z', description: 'Fecha límite de postulación (deadline)', nullable: true })
+  deadline?: Date | null;
 
-  @ApiProperty({
-    example: 'https://cargosacademicos.uc.cl/oferta/...',
-    description: 'URL para postular en el sitio original',
-  })
-  applyUrl: string;
+  @ApiProperty({ example: 'https://cargosacademicos.uc.cl/oferta/...', description: 'URL para postular en el sitio original' })
+  applyUrl?: string;
 
-  @ApiProperty({
-    example: true,
-    description: 'Si la oferta está activa',
-  })
-  isActive: boolean;
+  @ApiProperty({ example: true, description: 'Si la oferta está activa' })
+  isActive?: boolean;
 
-  @ApiProperty({
-    example: '2026-09-10T10:00:00.000Z',
-    description: 'Fecha del último scraping',
-  })
-  scrapedAt: Date;
+  @ApiProperty({ example: '2026-09-10T10:00:00.000Z', description: 'Fecha del último scraping' })
+  scrapedAt?: Date;
 
-  @ApiProperty({
-    example: '2026-09-10T10:00:00.000Z',
-    description: 'Fecha de creación',
-  })
-  createdAt: Date;
+  @ApiProperty({ example: '2026-09-10T10:00:00.000Z', description: 'Fecha de creación' })
+  createdAt?: Date;
 
-  @ApiProperty({
-    description: 'Nombre de la fuente',
-    example: 'Universidad de Chile',
-  })
-  sourceName: string;
+  @ApiProperty({ example: 'Universidad de Chile', description: 'Nombre de la fuente' })
+  sourceName?: string;
 
-  @ApiProperty({
-    description: 'Slug de la fuente',
-    example: 'uchile',
-  })
-  sourceSlug: string;
+  @ApiProperty({ example: 'uchile', description: 'Slug de la fuente' })
+  sourceSlug?: string;
 
-  @ApiProperty({
-    description: 'URL del logo/icono de la institución de la fuente',
-    example: 'https://staticcdn.trabajando.cl/portal-comunidad/abc/assets/logo.png',
-    nullable: true,
-  })
-  sourceLogoUrl: string | null;
+  @ApiProperty({ example: 'https://staticcdn.trabajando.cl/portal-comunidad/abc/assets/logo.png', description: 'URL del logo/icono de la institución de la fuente', nullable: true })
+  sourceLogoUrl?: string | null;
+
+  // Campos adicionales para JSON-LD (JSON-LD Metadata fields)
+  
+  @ApiProperty({ nullable: true, description: 'Código postal (ej. "5312084")' })
+  zipCode?: string | null;
+
+  @ApiProperty({ nullable: true, deprecated: 'Use neighborhood instead' })
+  addressLocality?: string | null;
+
+  @ApiProperty({ nullable: true, deprecated: 'Use minimumBaseSalary instead' })
+  minimumBaseSalary?: number | null;
+
+  // Alias para compatibilidad con jobType (usado en el scraper)
+  @ApiProperty({ nullable: true, deprecated: 'Use category instead' })
+  jobType?: string | null;
+
+  // Alias para compatibilidad con fromDate (ISO 8601)
+  @ApiProperty({ nullable: true, deprecated: 'Use publishedAt instead' })
+  publishedAt?: Date | null;
 }
 
-export class JobStatsResponseDto {
+export interface JobStatsResponseDto {
   @ApiProperty({
     description: 'Ofertas por fuente',
     example: [{ source: 'uchile', count: 15 }],
   })
-  bySource: { source: string; count: number }[];
+  bySource?: { source?: string; count?: number }[];
 
   @ApiProperty({
     description: 'Ofertas por región',
     example: [{ region: 'Metropolitana', count: 20 }],
   })
-  byRegion: { region: string; count: number }[];
+  byRegion?: { region?: string; count?: number }[];
 
   @ApiProperty({
     description: 'Total de ofertas activas',
     example: 85,
   })
-  totalActive: number;
+  totalActive?: number;
 
   @ApiProperty({
     description: 'Total de fuentes activas',
     example: 12,
   })
-  activeSources: number;
+  activeSources?: number;
 }
 
 @ApiExtraModels(JobResponseDto)
 export class JobsPageResponseDto {
   @ApiProperty({
     description: 'Ofertas de la página',
+    example: [{ id: 1, title: 'Profesor Asistente' }],
     type: 'array',
-    items: { $ref: getSchemaPath(JobResponseDto) },
+    items?: { $ref?: getSchemaPath(JobResponseDto) },
   })
-  items: JobResponseDto[];
+  items?: JobResponseDto[];
 
   @ApiProperty({
     description: 'Metadatos de paginación',
     example: { page: 1, limit: 20, total: 85, totalPages: 5 },
   })
-  meta: PaginationMeta;
+  meta?: { page?: number; limit?: number; total?: number; totalPages?: number };
+}
+
+// Respuesta ampliada para JSON-LD (incluye address y baseSalary)
+export interface JobExtendedResponseDto {
+  // Todos los campos de JobResponseDto
+  ...JobResponseDto;
+
+  // Campos adicionales para JSON-LD
+  @ApiProperty({ nullable: true, deprecated: 'Use neighborhood instead' })
+  addressLocality?: string | null;
+
+  @ApiProperty({ nullable: true, deprecated: 'Use zipCode instead' })
+  postalCode?: string | null;
+
+  @ApiProperty({ nullable: true, deprecated: 'Use minimumBaseSalary instead' })
+  baseSalary?: number | null;
+
+  @ApiProperty({ nullable: true, description: 'Fecha de fin (expirationDate en JSON-LD)' })
+  expirationDate?: Date | null;
+
+  // Alias para compatibilidad con jobType (usado en el scraper)
+  @ApiProperty({ nullable: true, deprecated: 'Use category instead' })
+  jobType?: string | null;
+
+  // Alias para compatibilidad con fromDate (ISO 8601)
+  @ApiProperty({ nullable: true, deprecated: 'Use publishedAt instead' })
+  publishedAt?: Date | null;
+
+  // Alias para compatibilidad con zipCode (usado en el scraper)
+  @ApiProperty({ nullable: true, deprecated: 'Use zipCode instead' })
+  codigoPostal?: string | null;
+
+  // Alias para compatibilidad con neighborhood (usado en el scraper)
+  @ApiProperty({ nullable: true, deprecated: 'Use neighborhood instead' })
+  comuna?: string | null;
+
+  // Alias para compatibilidad con minimumBaseSalary (usado en el scraper)
+  @ApiProperty({ nullable: true, deprecated: 'Use minimumBaseSalary instead' })
+  sueldo?: number | null;
+
+  // Alias para compatibilidad con expirationDate (usado en el scraper)
+  @ApiProperty({ nullable: true, deprecated: 'Use expirationDate instead' })
+  fechaFin?: Date | null;
+
+  // Alias para compatibilidad con addressLocality (usado en el scraper)
+  @ApiProperty({ nullable: true, deprecated: 'Use addressLocality instead' })
+  nombreComuna?: string | null;
+
+  // Alias para compatibilidad con baseSalary (usado en el scraper)
+  @ApiProperty({ nullable: true, deprecated: 'Use minimumBaseSalary instead' })
+  base?: number | null;
+
+  // Alias para compatibilidad con código postal (usado en el scraper)
+  @ApiProperty({ nullable: true, deprecated: 'Use zipCode instead' })
+  codigoPostal?: string | null;
+
+  // Alias para compatibilidad con dirección (usado en el scraper)
+  @ApiProperty({ nullable: true, deprecated: 'Use streetAddress instead' })
+  direccion?: string | null;
+
+  // Alias para compatibilidad con comuna (usado en el scraper)
+  @ApiProperty({ nullable: true, deprecated: 'Use neighborhood instead' })
+  comuna?: string | null;
+
+  // Alias para compatibilidad con salario base (usado en el scraper)
+  @ApiProperty({ nullable: true, deprecated: 'Use minimumBaseSalary instead' })
+  base?: number | null;
+
+  // Alias para compatibilidad con fecha fin (usado en el scraper)
+  @ApiProperty({ nullable: true, deprecated: 'Use expirationDate instead' })
+  fechaFin?: Date | null;
+
+  // Alias para compatibilidad con base (usado en el scraper)
+  @ApiProperty({ nullable: true, deprecated: 'Use minimumBaseSalary instead' })
+  base?: number | null;
+
+  // Alias para compatibilidad con fecha fin (usado en el scraper)
+  @ApiProperty({ nullable: true, deprecated: 'Use expirationDate instead' })
+  fechaFin?: Date | null;
+
+  // Alias para compatibilidad con base (usado en el scraper)
+  @ApiProperty({ nullable: true, deprecated: 'Use minimumBaseSalary instead' })
+  base?: number | null;
+
+  // Alias para compatibilidad con fecha fin (usado en el scraper)
+  @ApiProperty({ nullable: true, deprecated: 'Use expirationDate instead' })
+  fechaFin?: Date | null;
+
+  // Alias para compatibilidad con base (usado en el scraper)
+  @ApiProperty({ nullable: true, deprecated: 'Use minimumBaseSalary instead' })
+  base?: number | null;
+
+  // Alias para compatibilidad con fecha fin (usado en el scraper)
+  @ApiProperty({ nullable: true, deprecated: 'Use expirationDate instead' })
+  fechaFin?: Date | null;
+
+  // Alias para compatibilidad con base (usado en el scraper)
+  @ApiProperty({ nullable: true, deprecated: 'Use minimumBaseSalary instead' })
+  base?: number | null;
+
+}
+
+// Respuesta ampliada con source (para incluir detalles de la fuente)
+export interface JobExtendedResponseDtoWithSource extends JobExtendedResponseDto {
+  source?: {
+    name?: string;
+    slug?: string;
+    logoUrl?: string | null;
+  } | null;
 }

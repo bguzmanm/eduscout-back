@@ -1,23 +1,15 @@
 import { Controller, Get, Param, ParseIntPipe, Query } from '@nestjs/common';
 import { JobsService } from '../services/jobs.service';
-import {
-  ApiTags,
-  ApiOperation,
-  ApiResponse,
-  ApiQuery,
-} from '@nestjs/swagger';
-import { ApiWrappedResponse } from '../../../common/decorators/api-wrapped-response.decorator';
-import {
-  JobResponseDto,
-  JobStatsResponseDto,
-  JobsPageResponseDto,
-  SearchJobsDto,
-} from '../dtos/job.dto';
+import { JobLocationsController as LocationsController, AddressLocationDto } from './job-locations.controller';
+import { JobExtendedResponseDtoWithSource, SearchJobsDto } from '../dtos/job.dto';
 
 @ApiTags('jobs')
 @Controller('jobs')
 export class JobsController {
-  constructor(private readonly jobsService: JobsService) {}
+  constructor(
+    private readonly jobsService: JobsService,
+    private readonly locationsController: LocationsController,
+  ) {}
 
   @Get()
   @ApiOperation({ summary: 'Obtener todas las ofertas' })
@@ -76,4 +68,24 @@ export class JobsController {
   async findOne(@Param('id', ParseIntPipe) id: number) {
     return this.jobsService.findOne(id);
   }
+
+  @Get(':id/extended')
+  @ApiOperation({ summary: 'Obtener oferta ampliada con JSON-LD (address y baseSalary)' })
+  @ApiWrappedResponse(JobExtendedResponseDtoWithSource, 200, 'Oferta ampliada encontrada.')
+  @ApiResponse({ status: 404, description: 'Oferta no encontrada.' })
+  async getExtended(@Param('id', ParseIntPipe) id: number) {
+    return this.jobsService.getExtended(id);
+  }
+
+  @Get(':id/locations')
+  @ApiOperation({ summary: 'Obtener dirección de la oferta' })
+  @ApiWrappedResponse(
+    AddressLocationDto,
+    200,
+    'Dirección devuelta (puede ser null si no está disponible).',
+  )
+  async getLocations(@Param('id', ParseIntPipe) id: number) {
+    return this.locationsController.getJobLocations(id);
+  }
+}
 }
