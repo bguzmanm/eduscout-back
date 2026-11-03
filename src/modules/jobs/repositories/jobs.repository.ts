@@ -8,6 +8,7 @@ import {
   ilike,
   inArray,
   gte,
+  lt,
   count,
   isNotNull,
   SQL,
@@ -179,6 +180,22 @@ export class JobsRepository {
       .values({ sourceId, externalId, ...payload } as typeof schema.jobs.$inferInsert)
       .returning();
     return { ...created, isNew: true };
+  }
+
+  /**
+   * Desactiva las ofertas cuya fecha límite ya pasó. Google penaliza los
+   * JobPosting vencidos, por eso se ejecuta al terminar cada scraping.
+   */
+  async deactivateExpired(now: Date = new Date()): Promise<number> {
+    const deactivated = await this.db
+      .update(schema.jobs)
+      .set({ isActive: false, updatedAt: now })
+      .where(
+        and(eq(schema.jobs.isActive, true), lt(schema.jobs.deadline, now)),
+      )
+      .returning({ id: schema.jobs.id });
+
+    return deactivated.length;
   }
 
   async getStats() {

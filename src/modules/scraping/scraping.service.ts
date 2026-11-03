@@ -135,6 +135,13 @@ export class ScrapingService {
         totalErrors += entry.errorCount;
       }
 
+      const expiredCount = await this.jobsRepository.deactivateExpired();
+      if (expiredCount > 0) {
+        this.logger.log(
+          `${expiredCount} ofertas vencidas desactivadas (fecha límite pasada)`,
+        );
+      }
+
       const durationMs = Date.now() - startedAt.getTime();
       const hasSources = activeSources.length > 0;
       const allFailed =
