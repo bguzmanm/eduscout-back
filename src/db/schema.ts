@@ -76,6 +76,8 @@ export const jobs = pgTable(
     description: text('description'),
     requirements: text('requirements'),
     salaryRange: varchar('salary_range', { length: 100 }),
+    // Código postal de la comuna donde se ubica el cargo (JSON-LD JobPosting).
+    postalCode: varchar('postal_code', { length: 20 }),
     publishedAt: timestamp('published_at'),
     deadline: timestamp('deadline'),
     applyUrl: text('apply_url').notNull(),

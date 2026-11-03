@@ -91,6 +91,7 @@ export class SantoTomasAdapter implements ScraperAdapter {
       description: String(detail.descripcionOferta ?? '') || null,
       requirements: String(detail.requisitosMinimos ?? '') || null,
       salaryRange: this.extractSalaryRange(detail),
+      postalCode: String(ubicacion.codigoPostal ?? '') || null,
       publishedAt: detail.fechaPublicacionFormatoIngles
         ? new Date(String(detail.fechaPublicacionFormatoIngles))
         : null,

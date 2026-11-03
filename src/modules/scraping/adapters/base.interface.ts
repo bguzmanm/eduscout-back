@@ -9,6 +9,7 @@ export interface RawJob {
   description?: string | null;
   requirements?: string | null;
   salaryRange?: string | null;
+  postalCode?: string | null;
   publishedAt?: Date | null;
   deadline?: Date | null;
   applyUrl: string;

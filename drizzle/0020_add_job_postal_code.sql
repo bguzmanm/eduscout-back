@@ -1,0 +1,1 @@
+ALTER TABLE "jobs" ADD COLUMN "postal_code" varchar(20);

@@ -320,6 +320,7 @@ export class ScrapingService {
               description: rawJob.description,
               requirements: rawJob.requirements,
               salaryRange: rawJob.salaryRange,
+              postalCode: rawJob.postalCode,
               publishedAt: rawJob.publishedAt,
               deadline: rawJob.deadline,
               applyUrl: rawJob.applyUrl,

@@ -24,6 +24,7 @@ const SINGLE_LINE_FIELDS = [
   'location',
   'jobType',
   'salaryRange',
+  'postalCode',
 ] as const;
 
 /** Columnas con HTML y saltos de línea que hay que preservar. */
